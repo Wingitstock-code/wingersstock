@@ -195,24 +195,6 @@ if(window.pdfjsLib){
     </table>
   </div>
 
-  <div class="card">
-    <h2>Low Stock Items</h2>
-    <div class="row">
-      <select id="lowStockSiteFilter" onchange="renderDashboard()">
-        <option value="Waverley">Waverley</option>
-        <option value="Worksop">Worksop</option>
-      </select>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Qty / Low Level</th>
-        </tr>
-      </thead>
-      <tbody id="dashboardLowStockBody"></tbody>
-    </table>
-  </div>
 
   <div class="card">
     <h2>Recent Waste</h2>
@@ -3567,21 +3549,6 @@ function renderDashboard(){
       </tr>`;
   });
 
-  const lowBody = document.getElementById("dashboardLowStockBody");
-  const lowStockSite = document.getElementById("lowStockSiteFilter") ? document.getElementById("lowStockSiteFilter").value : "Waverley";
-  const lowRows = inventory.filter(r => r.site === lowStockSite && totalQty(r) <= Number(r.lowStock === undefined ? 5 : r.lowStock));
-  lowBody.innerHTML = "";
-  if(lowRows.length === 0){
-    lowBody.innerHTML = '<tr><td colspan="2">No low stock items for ' + lowStockSite + '.</td></tr>';
-  } else {
-    lowRows.forEach(r => {
-      lowBody.innerHTML += `
-        <tr>
-          <td>${r.item}</td>
-          <td>${totalQty(r).toFixed(2)} / Low: ${Number(r.lowStock === undefined ? 5 : r.lowStock).toFixed(2)}</td>
-        </tr>`;
-    });
-  }
 
   const wasteBody = document.getElementById("dashboardWasteBody");
   const recentWasteSite = document.getElementById("recentWasteSiteFilter") ? document.getElementById("recentWasteSiteFilter").value : "Waverley";
