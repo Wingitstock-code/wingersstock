@@ -1,0 +1,3919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WingItOnLTD Stock App</title>
+<style>
+:root{
+  --border:#d9d9d9;
+  --bg:#f7f7f7;
+  --dark:#222;
+  --muted:#666;
+  --danger:#ffe0e0;
+  --active:#222;
+  --good:#e5ffe8;
+  --bad:#ffe8e8;
+}
+body{
+  font-family:Arial, sans-serif;
+  max-width:1250px;
+  margin:20px auto;
+  padding:10px;
+  color:var(--dark);
+}
+h1{margin-bottom:14px}
+.card{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:14px;
+  margin:14px 0;
+  border-radius:10px;
+}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button,textarea{
+  padding:8px;
+  margin:3px;
+  border:1px solid #bbb;
+  border-radius:6px;
+}
+button{cursor:pointer;background:#f2f2f2}
+button:hover{background:#e9e9e9}
+button.danger{background:var(--danger)}
+button.primary{font-weight:bold}
+button.smallBtn{font-size:12px;padding:4px 7px;margin-left:6px}
+textarea{width:100%;min-height:110px}
+table{border-collapse:collapse;width:100%;margin-top:10px}
+th,td{border:1px solid var(--border);padding:8px;text-align:left}
+th{background:var(--bg)}
+.qtyInput,.priceInput,.actualInput,.actualCaseInput,.actualIndividualInput,.caseInput,.individualInput{width:90px}
+.small{font-size:13px;color:var(--muted)}
+.tabs{
+  display:flex;
+  gap:8px;
+  margin:16px 0;
+  flex-wrap:wrap;
+}
+.tab{
+  padding:12px 18px;
+  border-radius:8px;
+  border:1px solid #bbb;
+  background:#f2f2f2;
+  font-weight:bold;
+}
+.tab.active{
+  background:var(--active);
+  color:white;
+}
+.invoice-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin:7px 0;
+  flex-wrap:wrap;
+  border-bottom:1px solid #eee;
+  padding-bottom:7px;
+}
+.invoice-text{flex:1;min-width:280px}
+.badge{
+  background:#eee;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:12px;
+  display:inline-block;
+  margin:3px;
+}
+.positive{background:var(--good)}
+.negative{background:var(--bad)}
+.low-stock-row{background:#fff4d6}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.log-table-wrap{max-height:420px;overflow:auto}
+.hidden{display:none}
+#loginScreen{
+  max-width:420px;
+  margin:70px auto;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:22px;
+  background:#fff;
+}
+#appScreen{display:none}
+#loginScreen input{width:100%;box-sizing:border-box;margin:8px 0}
+#loginError{color:#b00020;font-size:14px}
+@media(max-width:760px){
+  body{margin:8px;padding:6px}
+  table{font-size:13px}
+  th,td{padding:6px}
+  input,select,button{width:100%;box-sizing:border-box}
+  .row,.tabs{display:block}
+  .tab{width:100%;margin-bottom:6px}
+}
+
+.export-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+</script>
+</head>
+<body>
+<div id="loginScreen">
+  <h1>WingItOnLTD</h1>
+  <h2>Login</h2>
+  
+  <input id="loginUser" placeholder="Username">
+  <input id="loginPass" type="password" placeholder="Password">
+  <button class="primary" onclick="login()">Login</button>
+  <p id="loginError"></p>
+</div>
+
+<div id="appScreen">
+<h1>WingItOnLTD</h1>
+<div class="row" style="justify-content:flex-end">
+  <span class="small">Logged in as <b id="loggedInUser"></b></span>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="tabs">
+  <button id="tab_dashboard" class="tab active" onclick="switchPage(currentLocation,'dashboard')">Dashboard</button>
+
+  <select class="tab" id="waverleyMenu" onchange="handleLocationMenu('Waverley', this.value)">
+    <option value="">Waverley</option>
+    <option value="stock">Stock</option>
+    <option value="count">Stock Count</option>
+    <option value="waste">Waste Log</option>
+    <option value="sold">Sold Items</option>
+  </select>
+
+  <select class="tab" id="worksopMenu" onchange="handleLocationMenu('Worksop', this.value)">
+    <option value="">Worksop</option>
+    <option value="stock">Stock</option>
+    <option value="count">Stock Count</option>
+    <option value="waste">Waste Log</option>
+    <option value="sold">Sold Items</option>
+  </select>
+
+  <button id="tab_transfer" class="tab" onclick="switchPage(currentLocation,'transfer')">Transfer Stock</button>
+  <button id="tab_export" class="tab" onclick="switchPage(currentLocation,'export')">Export Data</button>
+  <button id="tab_log" class="tab" onclick="switchPage(currentLocation,'log')">Log</button>
+  <button id="tab_case_sizes" class="tab" onclick="switchPage(currentLocation,'caseSizes')">Case Sizes</button>
+  <button id="tab_settings" class="tab" onclick="switchPage(currentLocation,'settings')">Settings</button>
+</div>
+
+
+<div id="dashboardPage">
+  <div class="card">
+    <h2>Dashboard</h2>
+    <div class="row">
+      <span class="badge" id="dashTotalStockValue">Total Stock Value: £0.00</span>
+      <span class="badge" id="dashTotalItems">Total Items: 0</span>
+      <span class="badge" id="dashWasteValue">Waste Value: £0.00</span>
+      <span class="badge" id="dashTransferCount">Transfers: 0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Site Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Location</th>
+          <th>Items</th>
+          <th>Stock Value</th>
+          <th>Zero/Negative Stock</th>
+          <th>Waste Records</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardSiteBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Low Stock Items</h2>
+    <div class="row">
+      <select id="lowStockSiteFilter" onchange="renderDashboard()">
+        <option value="Waverley">Waverley</option>
+        <option value="Worksop">Worksop</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Qty / Low Level</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardLowStockBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Recent Waste</h2>
+    <div class="row">
+      <select id="recentWasteSiteFilter" onchange="renderDashboard()">
+        <option value="Waverley">Waverley</option>
+        <option value="Worksop">Worksop</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Location</th>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Value</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardWasteBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Recent Transfers</h2>
+    <div class="row">
+      <select id="recentTransferSiteFilter" onchange="renderDashboard()">
+        <option value="Waverley">Waverley</option>
+        <option value="Worksop">Worksop</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>From</th>
+          <th>To</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardTransferBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="stockPage" class="hidden">
+  <div class="card">
+    <h2 id="stockPageTitle">Waverley Stock</h2>
+    <div class="row">
+      <input id="sku" placeholder="Item name">
+      <input id="caseQty" type="number" step="0.01" placeholder="Case qty">
+      <input id="individualQty" type="number" step="0.01" placeholder="Individual qty">
+      <input id="price" type="number" step="0.01" placeholder="Case price £">
+      <input id="individualPrice" type="number" step="0.01" placeholder="Individual price £">
+      <button class="primary" onclick="setStockFromForm()">Add / Set Item</button>
+    </div>
+    <p class="small">Adding an existing item updates its exact case quantity, individual quantity, case price and individual price for the current location.</p>
+<div id="adminResetStockSection" style="margin-top:10px;display:none">
+  <button class="danger" onclick="resetCurrentSiteStock()">Reset All Stock For This Site To 0</button>
+</div>
+  </div>
+
+  
+<div id="adminAddItemSection" class="card">
+  <h2>Add Item</h2>
+  <p class="small">Admin only. This adds the item to both Waverley and Worksop under the selected supplier.</p>
+  <div class="row">
+    <select id="newItemSupplier">
+      <option>Bidfood</option>
+      <option>Lesta</option>
+      <option>Wingers</option>
+    </select>
+    <input id="newItemName" placeholder="Item name">
+    <input id="newItemPrice" type="number" step="0.01" placeholder="Price £ each">
+    <button class="primary" onclick="adminAddItemToBothSites()">Add Item To Both Sites</button>
+  </div>
+</div>
+
+<div class="card">
+    <h2>Inventory</h2>
+    <div class="row">
+      <label><b>Supplier:</b></label>
+      <select id="supplierFilter" onchange="changeSupplier(this.value)">
+        <option>Bidfood</option>
+        <option>Lesta</option>
+        <option>Wingers</option>
+      </select>
+      <input id="stockSearch" placeholder="Search item..." onkeyup="render()" style="min-width:260px">
+      <button onclick="clearStockSearch()">Clear Search</button>
+    </div>
+    <p class="small">
+      Current Qty is split into Case and Individual. Use the +1 / -1 buttons in each column to adjust them separately.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2">Item</th>
+          <th colspan="2">Current Qty</th>
+          <th rowspan="2">Case Price</th>
+          <th rowspan="2">Individual Price</th>
+          <th rowspan="2">Total Value</th>
+          <th rowspan="2">Low Stock</th>
+          <th rowspan="2">Actions</th>
+        </tr>
+        <tr>
+          <th>Case</th>
+          <th>Individual</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryBody"></tbody>
+    </table>
+    <div class="row" style="justify-content:flex-end; margin-top:12px;">
+      <h3 style="margin:0;">Total Price: <span id="inventoryTotalPrice">£0.00</span></h3>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Invoice Import</h2>
+    <p class="small">
+      This invoice will be added to the selected supplier tab and current location: <b id="invoiceLocationLabel">Waverley</b>.
+      Upload a PDF invoice, CSV/TXT file, or paste invoice lines. For PDF invoices the app will read the supplier item description and quantity column, including Bidfood Quantity Supplied, Wingers Qty Delivered, and Lesta Quantity. Manual format: <b>Item, Quantity</b>. Example: <code>Tenders, 4</code>.
+    </p>
+
+    <div class="row">
+      <input type="file" id="invoiceFile" accept=".csv,.txt,.pdf,image/*">
+      <button onclick="loadInvoiceFile()">Load File</button>
+      <button class="primary" onclick="loadInvoiceFileWithAI()">Read PDF with AI</button>
+    </div>
+
+    <details style="margin:10px 0;">
+      <summary><b>AI invoice reader settings</b> <span class="small">optional, description + quantity only</span></summary>
+      <p class="small">
+        Use this when the normal PDF reader misses items. The AI reads only the invoice description/item name and quantity, then fills the preview.
+        For safety, use a restricted API key or a backend proxy if this app is shared.
+      </p>
+      <div class="row">
+        <input id="aiApiKey" type="password" placeholder="OpenAI API key" style="min-width:280px;">
+        <input id="aiModel" type="text" value="gpt-4o-mini" placeholder="Model" style="max-width:180px;">
+        <button onclick="saveAIInvoiceSettings()">Save AI Settings</button>
+      </div>
+      <p id="aiInvoiceStatus" class="small"></p>
+    </details>
+
+    <textarea id="invoiceText" placeholder="Paste invoice lines here:
+Tenders, 4
+Wings, 6
+Wraps, 8
+Buttermilk, 2
+Gravy, 3
+Ancho, 1
+Cookies, 10"></textarea>
+
+    <div class="row">
+      <button onclick="previewInvoice()">Preview Invoice</button>
+      <button class="primary" onclick="addInvoiceToStock()">Add Invoice Items To Stock</button>
+    </div>
+
+    <h3>Invoice Preview</h3>
+    <table>
+      <thead><tr><th>Description</th><th>Quantity Supplied</th><th>Current Stock</th><th>New Stock Level</th><th>Actions</th></tr></thead>
+      <tbody id="previewBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 id="invoiceTitle">Waverley Invoice History</h2>
+    <div id="invoiceList"></div>
+  </div>
+</div>
+
+<div id="countPage" class="hidden">
+  <div class="card">
+    <h2 id="countPageTitle">Waverley Stock Count</h2>
+    <p class="small">
+      “Should Have” shows the current system case and individual quantities. Type the real counted case and individual quantities into the count boxes.
+      The app shows the quantity difference and money difference using the case price and individual price already set in admin/settings.
+    </p>
+    <div class="row">
+      <label><b>Supplier:</b></label>
+      <select id="countSupplierFilter" onchange="changeSupplier(this.value)">
+        <option>Bidfood</option>
+        <option>Lesta</option>
+        <option>Wingers</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Should Have Case</th>
+          <th>Should Have Individual</th>
+          <th>Actual Case</th>
+          <th>Actual Individual</th>
+          <th>Case Difference</th>
+          <th>Individual Difference</th>
+          <th>Case Price</th>
+          <th>Individual Price</th>
+          <th>Value Difference</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="stockCountBody"></tbody>
+    </table>
+    <div class="row" style="justify-content:flex-end; margin-top:12px;">
+      <span class="badge">Actual Stock Value: <b id="actualStockValue">£0.00</b></span>
+      <span class="badge">Sales Value £: <input id="foodSalesValue" type="number" step="0.01" style="width:110px" oninput="saveFoodSalesValue(); renderFoodCostSummary();"></span>
+      <span class="badge">Food Cost Percentage: <b id="foodCostPercentage">0.00%</b></span>
+    </div>
+    <p class="small">Food Cost Percentage = actual counted stock value ÷ sales value × 100.</p>
+  </div>
+</div>
+
+<div id="soldPage" class="hidden">
+  <div class="card">
+    <h2 id="soldPageTitle">Waverley Sold Items</h2>
+    <p class="small">Paste the items sold for this location. Format each line as <b>Item, Quantity</b>. Press Enter in the box or click Apply Sold Items to subtract those quantities from Individual Qty.</p>
+    <textarea id="soldText" placeholder="Coke Can, 4
+Chicken Wings, 2" onkeydown="handleSoldTextKeydown(event)"></textarea>
+    <div class="row">
+      <button class="primary" onclick="applySoldItemsFromText()">Apply Sold Items</button>
+      <button onclick="document.getElementById('soldText').value=''">Clear</button>
+    </div>
+    <h3>Sold Preview</h3>
+    <table>
+      <thead><tr><th>Item</th><th>Quantity To Remove</th><th>Current Individual Qty</th><th>New Individual Qty</th><th>Status</th></tr></thead>
+      <tbody id="soldPreviewBody"><tr><td colspan="5">Paste sold items above.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+
+<div id="wastePage" class="hidden">
+  <div class="card">
+    <h2 id="wastePageTitle">Waverley Waste Log</h2>
+    <div class="row">
+      <input id="wasteItemSearch" type="search" placeholder="Search item to waste" oninput="populateWasteItems()">
+      <button onclick="clearWasteItemSearch()">Clear</button>
+      <select id="wasteItem"></select>
+      <input id="wasteQty" type="number" step="0.01" placeholder="Waste quantity">
+      <select id="wasteType"><option value="case">Case</option><option value="individual">Individual</option></select>
+      <input id="wasteReason" placeholder="Reason e.g. expired, dropped, damaged">
+      <button class="primary" onclick="addWaste()">Add Waste</button>
+    </div>
+    <p class="small">Search the item first, then choose Case or Individual waste. Adding waste subtracts the quantity from stock and records it in the waste log.</p>
+  </div>
+
+  <div class="card">
+    <h2>Waste History</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Type</th>
+          <th>Price Each</th>
+          <th>Waste Value</th>
+          <th>Reason</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="wasteBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="transferPage" class="hidden">
+  <div class="card">
+    <h2>Transfer Stock</h2>
+    <div class="row">
+      <select id="transferFrom" onchange="populateTransferItems()">
+        <option>Waverley</option>
+        <option>Worksop</option>
+      </select>
+      <span>to</span>
+      <select id="transferTo">
+        <option>Worksop</option>
+        <option>Waverley</option>
+      </select>
+      <select id="transferItem"></select>
+      <input id="transferQty" type="number" step="0.01" placeholder="Quantity">
+      <button class="primary" onclick="addTransfer()">Transfer</button>
+    </div>
+    <p class="small">Transfer subtracts stock from one location and adds it to the other.</p>
+  </div>
+
+  <div class="card">
+    <h2>Transfer History</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="transferBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="exportPage" class="hidden">
+  <div class="card">
+    <h2>Export Data</h2>
+    <p class="small">Choose Waverley, Worksop or All, then download the matching dated PDF report. Use Backup / Transfer Data to move all saved app data between devices.</p>
+
+    <div class="settings-grid">
+      <div class="card">
+        <h3>Waverley</h3>
+        <p class="small">Download Waverley-only PDF reports.</p>
+        <div class="export-actions" style="margin-top:10px;">
+          <button class="primary" onclick="exportReportPDF('Waverley','stock')">Export Stock</button>
+          <button class="primary" onclick="exportReportPDF('Waverley','stock_count')">Export Stock Count</button>
+          <button class="primary" onclick="exportReportPDF('Waverley','waste')">Export Waste</button>
+          <button class="primary" onclick="exportReportPDF('Waverley','transferred_stock')">Export Transferred Stock</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Worksop</h3>
+        <p class="small">Download Worksop-only PDF reports.</p>
+        <div class="export-actions" style="margin-top:10px;">
+          <button class="primary" onclick="exportReportPDF('Worksop','stock')">Export Stock</button>
+          <button class="primary" onclick="exportReportPDF('Worksop','stock_count')">Export Stock Count</button>
+          <button class="primary" onclick="exportReportPDF('Worksop','waste')">Export Waste</button>
+          <button class="primary" onclick="exportReportPDF('Worksop','transferred_stock')">Export Transferred Stock</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>All</h3>
+        <p class="small">Download combined Waverley and Worksop PDF reports.</p>
+        <div class="export-actions" style="margin-top:10px;">
+          <button class="primary" onclick="exportReportPDF('All','stock')">Export Stock</button>
+          <button class="primary" onclick="exportReportPDF('All','stock_count')">Export Stock Count</button>
+          <button class="primary" onclick="exportReportPDF('All','waste')">Export Waste</button>
+          <button class="primary" onclick="exportReportPDF('All','transferred_stock')">Export Transferred Stock</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h3>Backup / Transfer Data</h3>
+      <p class="small">Use these to move all saved data between devices. Export on the device with the latest data, then import that file on another device.</p>
+      <div class="export-actions" style="margin-top:10px;">
+        <button class="primary" onclick="exportFullBackup()">Export Full Backup</button>
+        <button class="primary" onclick="document.getElementById('backupImportFile').click()">Import Full Backup</button>
+        <input id="backupImportFile" type="file" accept="application/json,.json" style="display:none" onchange="importFullBackup(event)">
+      </div>
+      <p id="backupStatus" class="small"></p>
+    </div>
+
+    <div class="row">
+      <button id="exportCsvBtn" class="primary" onclick="exportDataToCSV()">Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<div id="caseSizesPage" class="hidden">
+  <div class="card">
+    <h2>Case Sizes</h2>
+    <p class="small">Admin only. Set how many individual units are inside one case for each item. This will show under the item name in Inventory.</p>
+    <div class="row" style="margin-bottom:10px;">
+      <label><b>Supplier:</b></label>
+      <select id="caseSizeSupplierFilter" onchange="renderCaseSizeSettings()">
+        <option>Bidfood</option>
+        <option>Lesta</option>
+        <option>Wingers</option>
+      </select>
+      <label><b>Location:</b></label>
+      <select id="caseSizeSiteFilter" onchange="renderCaseSizeSettings()">
+        <option value="All">All</option>
+        <option value="Waverley">Waverley</option>
+        <option value="Worksop">Worksop</option>
+      </select>
+    </div>
+    <div class="log-table-wrap">
+      <table>
+        <thead><tr><th>Site</th><th>Supplier</th><th>Item</th><th>In One Case</th><th>Action</th></tr></thead>
+        <tbody id="caseSizeSettingsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="settingsPage" class="hidden">
+  <div class="card">
+    <h2>Settings</h2>
+    <p class="small">Admin only. Add, remove and edit local accounts. Staff accounts are site accounts. Admin accounts can access everything. Manager accounts can see both stores but cannot access Settings or Case Sizes.</p>
+
+    <div class="settings-grid">
+      <div class="card">
+        <h3>Add Account</h3>
+        <input id="newAccountLabel" placeholder="Account name">
+        <input id="newAccountUsername" placeholder="Username">
+        <input id="newAccountPassword" type="password" placeholder="Password">
+        <select id="newAccountRole" onchange="toggleNewAccountSite()">
+          <option value="Staff">Staff</option>
+          <option value="Manager">Manager</option>
+          <option value="Admin">Admin</option>
+        </select>
+        <select id="newAccountSite">
+          <option value="Waverley">Waverley</option>
+          <option value="Worksop">Worksop</option>
+        </select>
+        <button class="primary" onclick="addAccount()">Add Account</button>
+      </div>
+
+      <div class="card">
+        <h3>Set All Stock Level</h3>
+        <p class="small">Set every stock item to the same quantity. You can apply it to all sites or just one site.</p>
+        <select id="setAllStockSite">
+          <option value="All">All sites</option>
+          <option value="Waverley">Waverley only</option>
+          <option value="Worksop">Worksop only</option>
+        </select>
+        <input id="setAllStockValue" type="number" step="0.01" min="0" placeholder="New stock quantity">
+        <button class="primary" onclick="setAllStockLevel()">Set All Stock Level</button>
+      </div>
+
+      <div class="card">
+        <h3>AI Invoice Reader Settings</h3>
+        <p class="small">Save your OpenAI API key here so the invoice import page can read PDF invoices with AI. The AI only extracts item description/name and quantity.</p>
+        <input id="settingsAiApiKey" type="password" placeholder="OpenAI API key">
+        <input id="settingsAiModel" type="text" value="gpt-4o-mini" placeholder="Model">
+        <button class="primary" onclick="saveAIInvoiceSettingsFromSettings()">Save AI Settings</button>
+        <button onclick="clearAIInvoiceSettings()">Clear AI Key</button>
+        <p id="settingsAiInvoiceStatus" class="small"></p>
+      </div>
+
+      <div class="card">
+        <h3>Low Stock Levels</h3>
+        <p class="small">Set the warning level for each stock item. Items at or below this level show in the low stock dashboard.</p>
+        <div class="export-actions" style="margin-bottom:12px;">
+          <select id="setAllLowStockSite">
+            <option value="All">All sites</option>
+            <option value="Waverley">Waverley only</option>
+            <option value="Worksop">Worksop only</option>
+          </select>
+          <input id="setAllLowStockValue" type="number" step="0.01" min="0" placeholder="Low stock level">
+          <button class="primary" onclick="setAllLowStockLevels()">Set All</button>
+        </div>
+        <div class="log-table-wrap">
+          <table>
+            <thead><tr><th>Site</th><th>Item</th><th>Current Qty</th><th>Low Stock Level</th><th>Action</th></tr></thead>
+            <tbody id="lowStockSettingsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Individual Prices</h3>
+        <p class="small">Set the price for one individual item. Case price is still edited from the inventory line.</p>
+        <div class="log-table-wrap">
+          <table>
+            <thead><tr><th>Site</th><th>Item</th><th>Case Price</th><th>Individual Price</th><th>Action</th></tr></thead>
+            <tbody id="individualPriceSettingsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h3>Accounts</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Username</th>
+          <th>Password</th>
+          <th>Role</th>
+          <th>Site Access</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="settingsUsersBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="logPage" class="hidden">
+  <div class="card">
+    <h2>Admin Log</h2>
+    <p class="small">Shows stock adjustments, account changes, exports and other admin actions saved in this browser.</p>
+    <button class="danger" onclick="clearAuditLog()">Clear Log</button>
+    <div class="log-table-wrap">
+      <table>
+        <thead><tr><th>Date / Time</th><th>Account</th><th>Role</th><th>Action</th><th>Site</th><th>Item</th><th>Qty</th><th>Details</th></tr></thead>
+        <tbody id="adminLogBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+<h2>Summary</h2>
+<div id="summary"></div>
+</div>
+
+<script>
+
+window.onerror = function(message, source, lineno, colno, error){
+  try{
+    var box = document.getElementById("loginError") || document.body;
+    var text = "App error: " + message + " (line " + lineno + ")";
+    if(box === document.body){
+      var div = document.createElement("div");
+      div.style.cssText = "background:#ffe6e6;color:#900;padding:10px;margin:10px;border:1px solid #900;white-space:pre-wrap";
+      div.textContent = text;
+      document.body.insertBefore(div, document.body.firstChild);
+    } else {
+      box.style.display = "block";
+      box.style.color = "#b00020";
+      box.textContent = text;
+    }
+  }catch(e){}
+  return false;
+};
+function showLoginMessage(msg){
+  try{
+    var el = document.getElementById("loginError");
+    if(el){ el.style.display="block"; el.style.color="#b00020"; el.innerText = msg; }
+    else { alert(msg); }
+  }catch(e){ alert(msg); }
+}
+
+const DEFAULT_USERS = [
+  {key:"admin", label:"Admin", username:"admin", password:"1234", role:"Admin", site:"All"},
+  {key:"waverley", label:"Waverley Staff", username:"waverley", password:"1234", role:"Staff", site:"Waverley"},
+  {key:"worksop", label:"Worksop Staff", username:"worksop", password:"1234", role:"Staff", site:"Worksop"}
+];
+
+let USERS = JSON.parse(localStorage.getItem("wingiton_users") || "null") || DEFAULT_USERS;
+
+function saveUsers(){
+  localStorage.setItem("wingiton_users", JSON.stringify(USERS));
+}
+
+function currentUser(){
+  try{
+    return JSON.parse(sessionStorage.getItem("wingiton_logged_in") || localStorage.getItem("wingiton_logged_in_fallback") || "null");
+  }catch(e){
+    return null;
+  }
+}
+
+function isAdmin(){
+  const user = currentUser();
+  return user && user.role === "Admin";
+}
+
+function isManager(){
+  const user = currentUser();
+  return user && user.role === "Manager";
+}
+
+function canSeeAllStores(){
+  const user = currentUser();
+  return user && (user.role === "Admin" || user.role === "Manager");
+}
+
+function allowedSite(site){
+  const user = currentUser();
+  if(!user) return false;
+  return canSeeAllStores() || user.site === site;
+}
+
+function enforceAccess(location, mode){
+  const user = currentUser();
+  if(!user) return {location:"Waverley", mode:"dashboard"};
+
+  if(user.role === "Admin") return {location, mode};
+
+  if(user.role === "Manager"){
+    if(["settings","caseSizes"].includes(mode)) return {location:"Waverley", mode:"stock"};
+    return {location, mode};
+  }
+
+  // Site users cannot see dashboard because it contains both sites.
+  if(mode === "dashboard") return {location:user.site, mode:"stock"};
+
+  // Site users can only view their own site pages.
+  if(["stock","count","waste","sold"].includes(mode) && location !== user.site){
+    return {location:user.site, mode};
+  }
+
+  // Admin/manager pages are not available to staff.
+  if(["settings","log","caseSizes"].includes(mode) && user.role !== "Admin") return {location:user.site, mode:"stock"};
+
+  // Site users may use Transfer Stock.
+  if(mode === "transfer") return {location:user.site, mode};
+
+  return {location:user.site, mode};
+}
+
+
+function resetCurrentSiteStock(){
+  if(!isAdmin()){
+    alert("Admin access required.");
+    return;
+  }
+
+  const site = currentLocation;
+  const rows = inventory.filter(row => row.site === site);
+
+  if(rows.length === 0){
+    alert("No stock rows found for " + site + ".");
+    return;
+  }
+
+  if(!confirm("Reset ALL stock quantities for " + site + " to 0?")) return;
+  if(!confirm("This cannot be undone unless you have exported a backup. Confirm reset for " + site + ".")) return;
+
+  rows.forEach(row => {
+    row.qty = 0;
+    row.caseQty = 0;
+    row.individualQty = 0;
+    row.actual = "";
+    row.actualCase = "";
+    row.actualIndividual = "";
+  });
+
+  logAction("RESET_STOCK", "All stock reset to zero", site, "All items", rows.length);
+  save();
+  render();
+  alert("All stock for " + site + " has been reset to 0.");
+}
+
+function login(){
+  try{
+    var usernameEl = document.getElementById("loginUser");
+    var passwordEl = document.getElementById("loginPass");
+    var username = usernameEl ? usernameEl.value.trim() : "";
+    var password = passwordEl ? passwordEl.value : "";
+    var user = null;
+
+    for(var i=0;i<USERS.length;i++){
+      if(USERS[i].username === username && USERS[i].password === password){
+        user = USERS[i];
+        break;
+      }
+    }
+
+    if(!user){
+      showLoginMessage("Incorrect username or password.");
+      return false;
+    }
+
+    try{
+      sessionStorage.setItem("wingiton_logged_in", JSON.stringify(user));
+    }catch(storageErr){
+      localStorage.setItem("wingiton_logged_in_fallback", JSON.stringify(user));
+    }
+
+    showApp();
+    updateBranding();
+    var rs = document.getElementById("adminResetStockSection");
+    if(rs) rs.style.display = isAdmin() ? "block" : "none";
+    return false;
+  }catch(err){
+    showLoginMessage("Login error: " + (err && err.message ? err.message : err));
+    return false;
+  }
+}
+
+function logout(){
+  try{ sessionStorage.removeItem("wingiton_logged_in"); }catch(e){}
+  try{ localStorage.removeItem("wingiton_logged_in_fallback"); }catch(e){}
+  document.getElementById("appScreen").style.display = "none";
+  document.getElementById("loginScreen").style.display = "block";
+  document.getElementById("loginPass").value = "";
+}
+
+function showApp(){
+  var user = currentUser();
+  if(user){
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("appScreen").style.display = "block";
+    document.getElementById("loggedInUser").innerText = user.username + " (" + user.role + (user.site !== "All" ? " - " + user.site : "") + ")";
+    applyUserNavigation();
+    updateBranding();
+    if(user.role === "Admin" || user.role === "Manager"){
+      switchPage("Waverley", user.role === "Admin" ? "dashboard" : "stock");
+    } else {
+      switchPage(user.site, "stock");
+    }
+  }
+}
+
+
+function updateBranding(){
+  const user = currentUser ? currentUser() : null;
+  if(!user) return;
+
+  const headings = document.querySelectorAll("h1");
+
+  headings.forEach(titleEl => {
+    if(user.role === "Admin" || user.role === "Manager"){
+      titleEl.innerText = "WingItOnLTD";
+    }else if(user.site === "Waverley"){
+      titleEl.innerText = "Wingers Waverley";
+    }else if(user.site === "Worksop"){
+      titleEl.innerText = "Wingers Worksop";
+    }
+  });
+}
+
+
+function applyUserNavigation(){
+  const user = currentUser();
+  if(!user) return;
+
+  const adminOnly = ["tab_dashboard"];
+  adminOnly.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = isAdmin() ? "" : "none";
+  });
+
+  const waverleyMenu = document.getElementById("waverleyMenu");
+  const worksopMenu = document.getElementById("worksopMenu");
+
+  if(waverleyMenu) waverleyMenu.style.display = canSeeAllStores() || user.site === "Waverley" ? "" : "none";
+  if(worksopMenu) worksopMenu.style.display = canSeeAllStores() || user.site === "Worksop" ? "" : "none";
+
+  // Keep Transfer available to all logged-in users.
+  const transferTab = document.getElementById("tab_transfer");
+  if(transferTab) transferTab.style.display = "";
+
+  const exportTab = document.getElementById("tab_export");
+  if(exportTab) exportTab.style.display = "";
+
+  const settingsTab = document.getElementById("tab_settings");
+  if(settingsTab) settingsTab.style.display = isAdmin() ? "" : "none";
+
+  const logTab = document.getElementById("tab_log");
+  if(logTab) logTab.style.display = isAdmin() ? "" : "none";
+
+  const caseSizesTab = document.getElementById("tab_case_sizes");
+  if(caseSizesTab) caseSizesTab.style.display = isAdmin() ? "" : "none";
+
+  const exportBtn = document.getElementById("exportBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  if(exportBtn) exportBtn.style.display = isAdmin() ? "" : "none";
+  if(resetBtn) resetBtn.style.display = isAdmin() ? "" : "none";
+
+  const priceInput = document.getElementById("price");
+  if(priceInput) priceInput.style.display = isAdmin() ? "" : "none";
+
+  const addItemSection = document.getElementById("adminAddItemSection");
+  if(addItemSection) addItemSection.style.display = isAdmin() ? "" : "none";
+
+  const adminResetStockSection = document.getElementById("adminResetStockSection");
+  if(adminResetStockSection) adminResetStockSection.style.display = isAdmin() ? "block" : "none";
+}
+
+const CORE_ITEMS = ["Tenders","Wings","Wraps","Buttermilk","Gravy","Ancho","Cookies"];
+const LOCATIONS = ["Waverley","Worksop"];
+
+let currentLocation = "Waverley";
+let currentMode = "dashboard";
+let currentSupplier = "Bidfood";
+
+let inventory = JSON.parse(localStorage.getItem("wingiton_inventory_v9") || "null");
+let invoices = JSON.parse(localStorage.getItem("wingiton_invoices_v9") || "[]");
+let wasteLog = JSON.parse(localStorage.getItem("wingiton_waste_v20") || "[]");
+let transferLog = JSON.parse(localStorage.getItem("wingiton_transfers_v20") || "[]");
+let auditLog = JSON.parse(localStorage.getItem("wingiton_audit_log_v1") || "[]");
+let previewItems = [];
+
+if(!inventory){
+  inventory = [];
+  LOCATIONS.forEach(site => {
+    CORE_ITEMS.forEach(item => inventory.push({site, item, qty:0, caseQty:0, individualQty:0, price:0, individualPrice:0, caseSize:0, actual:""}));
+  });
+  save();
+}
+
+function money(value){
+  return "£" + Number(value || 0).toFixed(2);
+}
+
+function normaliseName(name){
+  return String(name || "").trim().replace(/\s+/g," ");
+}
+
+function save(){
+  localStorage.setItem("wingiton_inventory_v9", JSON.stringify(inventory));
+  localStorage.setItem("wingiton_invoices_v9", JSON.stringify(invoices));
+  localStorage.setItem("wingiton_waste_v20", JSON.stringify(wasteLog));
+  localStorage.setItem("wingiton_transfers_v20", JSON.stringify(transferLog));
+  localStorage.setItem("wingiton_audit_log_v1", JSON.stringify(auditLog));
+}
+
+
+function getWingItOnBackupKeys(){
+  const preferred = [
+    "wingiton_inventory_v9",
+    "wingiton_invoices_v9",
+    "wingiton_waste_v20",
+    "wingiton_transfers_v20",
+    "wingiton_audit_log_v1",
+    "wingiton_users"
+  ];
+  const keys = new Set(preferred);
+  for(let i=0; i<localStorage.length; i++){
+    const key = localStorage.key(i);
+    if(key && key.indexOf("wingiton_") === 0) keys.add(key);
+  }
+  return Array.from(keys).filter(key => localStorage.getItem(key) !== null);
+}
+
+function exportFullBackup(){
+  const data = {};
+  getWingItOnBackupKeys().forEach(key => {
+    data[key] = localStorage.getItem(key);
+  });
+  const backup = {
+    app: "WingItOnLTD Stock App",
+    version: "full-localstorage-backup-v1",
+    exportedAt: new Date().toISOString(),
+    exportedBy: loggedInAccountLabel(),
+    keys: data
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  a.href = url;
+  a.download = `wingiton_full_backup_${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  const status = document.getElementById("backupStatus");
+  if(status) status.textContent = "Backup exported: " + new Date().toLocaleString();
+  if(typeof logAction === "function") logAction("Backup export", "Exported full device backup", "", "", "");
+}
+
+function importFullBackup(event){
+  const input = event.target;
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    try{
+      const backup = JSON.parse(reader.result);
+      if(!backup || !backup.keys || typeof backup.keys !== "object"){
+        throw new Error("This does not look like a WingItOn backup file.");
+      }
+      const count = Object.keys(backup.keys).length;
+      if(!confirm(`Import this backup and replace this device's saved app data?\n\nBackup date: ${backup.exportedAt || "Unknown"}\nSaved sections: ${count}`)){
+        input.value = "";
+        return;
+      }
+      Object.keys(backup.keys).forEach(key => {
+        if(key.indexOf("wingiton_") === 0){
+          localStorage.setItem(key, backup.keys[key]);
+        }
+      });
+      alert("Backup imported. The app will now reload with the imported data.");
+      location.reload();
+    } catch(err){
+      alert("Could not import backup: " + err.message);
+    } finally {
+      input.value = "";
+    }
+  };
+  reader.readAsText(file);
+}
+
+function loggedInAccountLabel(){
+  const user = currentUser();
+  if(!user) return "Not logged in";
+  return (user.label || user.username || "Account");
+}
+
+function logAction(action, details, site, item, qty){
+  const user = currentUser() || {};
+  auditLog.push({
+    date:new Date().toLocaleString(),
+    account:user.username || "Unknown",
+    accountLabel:user.label || user.username || "Unknown",
+    role:user.role || "",
+    action:action || "Action",
+    site:site || "",
+    item:item || "",
+    qty:qty === undefined || qty === null ? "" : qty,
+    details:details || ""
+  });
+  if(auditLog.length > 1000) auditLog = auditLog.slice(-1000);
+  localStorage.setItem("wingiton_audit_log_v1", JSON.stringify(auditLog));
+}
+
+function totalQty(row){
+  return Number(row.caseQty || 0) + Number(row.individualQty || 0);
+}
+
+function stockValue(row){
+  return (Number(row.caseQty || 0) * Number(row.price || 0)) + (Number(row.individualQty || 0) * Number(row.individualPrice || 0));
+}
+
+function syncRowQty(row){
+  row.qty = totalQty(row);
+}
+
+function migrateRows(){
+  inventory.forEach(r => {
+    if(r.price === undefined) r.price = 0;
+    if(r.actual === undefined) r.actual = "";
+    if(r.actualCase === undefined) r.actualCase = r.actual !== "" && r.actual !== undefined ? r.actual : "";
+    if(r.actualIndividual === undefined) r.actualIndividual = "";
+    if(r.supplier === undefined) r.supplier = "Bidfood";
+    if(r.lowStock === undefined) r.lowStock = 5;
+    if(r.individualPrice === undefined) r.individualPrice = 0;
+    if(r.caseSize === undefined) r.caseSize = 0;
+    if(r.caseQty === undefined && r.individualQty === undefined){
+      r.caseQty = Number(r.qty || 0);
+      r.individualQty = 0;
+    }
+    if(r.caseQty === undefined) r.caseQty = 0;
+    if(r.individualQty === undefined) r.individualQty = 0;
+    syncRowQty(r);
+  });
+}
+migrateRows();
+
+function handleLocationMenu(location, mode){
+  if(!mode) return;
+  switchPage(location, mode);
+  document.getElementById("waverleyMenu").value = "";
+  document.getElementById("worksopMenu").value = "";
+}
+
+
+function escapeHtml(value){
+  return String(value === undefined || value === null ? "" : value)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
+function toggleNewAccountSite(){
+  const role = document.getElementById("newAccountRole") ? document.getElementById("newAccountRole").value : "Staff";
+  const site = document.getElementById("newAccountSite");
+  if(site){
+    site.disabled = role === "Admin" || role === "Manager";
+    if(role === "Admin" || role === "Manager") site.value = "Waverley";
+  }
+}
+
+function renderSettings(){
+  const body = document.getElementById("settingsUsersBody");
+  if(!body) return;
+
+  body.innerHTML = "";
+
+  USERS.forEach((user, index) => {
+    body.innerHTML += `
+      <tr>
+        <td><input id="settingsLabel_${index}" value="${escapeHtml(user.label || user.role || "Account")}"></td>
+        <td><input id="settingsUsername_${index}" value="${escapeHtml(user.username)}"></td>
+        <td><input id="settingsPassword_${index}" value="${escapeHtml(user.password)}"></td>
+        <td>
+          <select id="settingsRole_${index}" onchange="updateSettingsSiteAvailability(${index})">
+            <option value="Staff" ${user.role === "Staff" ? "selected" : ""}>Staff</option>
+            <option value="Manager" ${user.role === "Manager" ? "selected" : ""}>Manager</option>
+            <option value="Admin" ${user.role === "Admin" ? "selected" : ""}>Admin</option>
+          </select>
+        </td>
+        <td>
+          <select id="settingsSite_${index}" ${(user.role === "Admin" || user.role === "Manager") ? "disabled" : ""}>
+            <option value="Waverley" ${user.site === "Waverley" ? "selected" : ""}>Waverley</option>
+            <option value="Worksop" ${user.site === "Worksop" ? "selected" : ""}>Worksop</option>
+          </select>
+          ${(user.role === "Admin" || user.role === "Manager") ? "All" : ""}
+        </td>
+        <td>
+          <button onclick="saveUserSettings(${index})">Save</button>
+          <button class="danger" onclick="removeAccount(${index})">Remove</button>
+        </td>
+      </tr>`;
+  });
+
+  renderLowStockSettings();
+  renderIndividualPriceSettings();
+  toggleNewAccountSite();
+}
+
+function updateSettingsSiteAvailability(index){
+  const role = document.getElementById("settingsRole_" + index).value;
+  const site = document.getElementById("settingsSite_" + index);
+  if(site) site.disabled = role === "Admin" || role === "Manager";
+}
+
+function addAccount(){
+  if(!isAdmin()){
+    alert("Only admin can add accounts.");
+    return;
+  }
+  const label = document.getElementById("newAccountLabel").value.trim();
+  const username = document.getElementById("newAccountUsername").value.trim();
+  const password = document.getElementById("newAccountPassword").value;
+  const role = document.getElementById("newAccountRole").value;
+  const site = (role === "Admin" || role === "Manager") ? "All" : document.getElementById("newAccountSite").value;
+
+  if(!username || !password){
+    alert("Username and password cannot be blank.");
+    return;
+  }
+  if(USERS.some(u => u.username.toLowerCase() === username.toLowerCase())){
+    alert("That username is already being used.");
+    return;
+  }
+  USERS.push({
+    key:"custom_" + Date.now(),
+    label:label || (role === "Admin" ? "Admin" : (role === "Manager" ? "Manager" : site + " Staff")),
+    username,
+    password,
+    role,
+    site
+  });
+  saveUsers();
+  logAction("Account added", "Added account " + username + " as " + role + " / " + site, site);
+  document.getElementById("newAccountLabel").value = "";
+  document.getElementById("newAccountUsername").value = "";
+  document.getElementById("newAccountPassword").value = "";
+  renderSettings();
+  alert("Account added.");
+}
+
+function removeAccount(index){
+  if(!isAdmin()){
+    alert("Only admin can remove accounts.");
+    return;
+  }
+  if(USERS.length <= 1){
+    alert("You must keep at least one account.");
+    return;
+  }
+  const user = USERS[index];
+  if(user.role === "Admin" && USERS.filter(u => u.role === "Admin").length <= 1){
+    alert("You must keep at least one admin account.");
+    return;
+  }
+  if(confirm("Remove account: " + user.username + "?")){
+    USERS.splice(index,1);
+    saveUsers();
+    logAction("Account removed", "Removed account " + user.username, user.site);
+    renderSettings();
+  }
+}
+
+function saveUserSettings(index){
+  if(!isAdmin()){
+    alert("Only admin can change login settings.");
+    return;
+  }
+
+  const label = document.getElementById("settingsLabel_" + index).value.trim();
+  const username = document.getElementById("settingsUsername_" + index).value.trim();
+  const password = document.getElementById("settingsPassword_" + index).value;
+  const role = document.getElementById("settingsRole_" + index).value;
+  const site = (role === "Admin" || role === "Manager") ? "All" : document.getElementById("settingsSite_" + index).value;
+
+  if(!username || !password){
+    alert("Username and password cannot be blank.");
+    return;
+  }
+
+  const duplicate = USERS.some((u, i) => i !== index && u.username.toLowerCase() === username.toLowerCase());
+  if(duplicate){
+    alert("That username is already being used.");
+    return;
+  }
+
+  if(USERS[index].role === "Admin" && role !== "Admin" && USERS.filter(u => u.role === "Admin").length <= 1){
+    alert("You must keep at least one admin account.");
+    return;
+  }
+
+  const before = USERS[index].username + " / " + USERS[index].role + " / " + USERS[index].site;
+  USERS[index].label = label || (role === "Admin" ? "Admin" : (role === "Manager" ? "Manager" : site + " Staff"));
+  USERS[index].username = username;
+  USERS[index].password = password;
+  USERS[index].role = role;
+  USERS[index].site = site;
+  saveUsers();
+  logAction("Account updated", "Changed " + before + " to " + username + " / " + role + " / " + site, site);
+  renderSettings();
+  alert("Login details updated.");
+}
+
+
+function renderCaseSizeSettings(){
+  const body = document.getElementById("caseSizeSettingsBody");
+  if(!body) return;
+  const supplierEl = document.getElementById("caseSizeSupplierFilter");
+  const siteEl = document.getElementById("caseSizeSiteFilter");
+  const supplier = supplierEl ? supplierEl.value : "Bidfood";
+  const site = siteEl ? siteEl.value : "All";
+  body.innerHTML = "";
+
+  const rows = inventory.filter(row => (row.supplier || "Bidfood") === supplier && (site === "All" || row.site === site));
+  rows.forEach(row => {
+    const index = getOriginalIndex(row);
+    body.innerHTML += `
+      <tr>
+        <td>${escapeHtml(row.site)}</td>
+        <td>${escapeHtml(row.supplier || "Bidfood")}</td>
+        <td>${escapeHtml(row.item)}</td>
+        <td><input id="caseSize_${index}" type="number" step="0.01" min="0" value="${Number(row.caseSize || 0)}" placeholder="e.g. 24"></td>
+        <td><button onclick="saveCaseSize(${index})">Save</button></td>
+      </tr>`;
+  });
+
+  if(rows.length === 0){
+    body.innerHTML = '<tr><td colspan="5">No items for this supplier/location.</td></tr>';
+  }
+}
+
+function saveCaseSize(index){
+  if(!isAdmin()){
+    alert("Only admin can set case sizes.");
+    return;
+  }
+  const input = document.getElementById("caseSize_" + index);
+  const value = Number(input ? input.value : 0);
+  if(isNaN(value) || value < 0){
+    alert("Enter a valid number for how many individual units are in one case.");
+    return;
+  }
+  const target = inventory[index];
+  const supplier = target.supplier || "Bidfood";
+  const itemKey = normaliseName(target.item).toLowerCase();
+  const oldValue = Number(target.caseSize || 0);
+  let updatedSites = [];
+  inventory.forEach(row => {
+    if((row.supplier || "Bidfood") === supplier && normaliseName(row.item).toLowerCase() === itemKey){
+      row.caseSize = value;
+      updatedSites.push(row.site);
+    }
+  });
+  logAction("Case size changed", "Changed units in one case from " + oldValue + " to " + value + " for " + [...new Set(updatedSites)].join(" and "), target.site, target.item, value);
+  render();
+}
+
+function renderIndividualPriceSettings(){
+  const body = document.getElementById("individualPriceSettingsBody");
+  if(!body) return;
+  body.innerHTML = "";
+  inventory.forEach((row, index) => {
+    body.innerHTML += `
+      <tr>
+        <td>${escapeHtml(row.site)}</td>
+        <td>${escapeHtml(row.item)}</td>
+        <td>${money(row.price || 0)}</td>
+        <td><input id="individualPrice_${index}" type="number" step="0.01" min="0" value="${Number(row.individualPrice || 0)}"></td>
+        <td><button onclick="saveIndividualPrice(${index})">Save</button></td>
+      </tr>`;
+  });
+}
+
+function saveIndividualPrice(index){
+  if(!isAdmin()){
+    alert("Only admin can set individual prices.");
+    return;
+  }
+  const value = Number(document.getElementById("individualPrice_" + index).value);
+  if(isNaN(value) || value < 0){
+    alert("Enter a valid individual price.");
+    return;
+  }
+  const itemName = inventory[index].item;
+  inventory.filter(r => r.item === itemName).forEach(r => r.individualPrice = value);
+  logAction("Individual price changed", "Global individual price set to " + value, "All", itemName);
+  render();
+}
+
+function renderLowStockSettings(){
+  const body = document.getElementById("lowStockSettingsBody");
+  if(!body) return;
+  body.innerHTML = "";
+  inventory.forEach((row, index) => {
+    body.innerHTML += `
+      <tr>
+        <td>${escapeHtml(row.site)}</td>
+        <td>${escapeHtml(row.item)}</td>
+        <td>${totalQty(row).toFixed(2)}</td>
+        <td><input id="lowStock_${index}" type="number" step="0.01" value="${Number(row.lowStock === undefined ? 5 : row.lowStock)}"></td>
+        <td><button onclick="saveLowStockLevel(${index})">Save</button></td>
+      </tr>`;
+  });
+}
+
+function saveLowStockLevel(index){
+  if(!isAdmin()){
+    alert("Only admin can set low stock levels.");
+    return;
+  }
+  const value = Number(document.getElementById("lowStock_" + index).value);
+  if(isNaN(value) || value < 0){
+    alert("Enter a valid low stock level.");
+    return;
+  }
+  inventory[index].lowStock = value;
+  logAction("Low stock level changed", "Low stock level set to " + value, inventory[index].site, inventory[index].item, value);
+  render();
+}
+
+function setAllLowStockLevels(){
+  if(!isAdmin()){
+    alert("Only admin can set low stock levels.");
+    return;
+  }
+
+  const site = document.getElementById("setAllLowStockSite").value;
+  const value = Number(document.getElementById("setAllLowStockValue").value);
+
+  if(isNaN(value) || value < 0){
+    alert("Enter a valid low stock level.");
+    return;
+  }
+
+  const rows = inventory.filter(row => site === "All" || row.site === site);
+  if(rows.length === 0){
+    alert("No stock items found for that selection.");
+    return;
+  }
+
+  const label = site === "All" ? "all sites" : site;
+  if(!confirm("Set the low stock level for " + rows.length + " items for " + label + " to " + value + "?")){
+    return;
+  }
+
+  rows.forEach(row => {
+    row.lowStock = value;
+  });
+
+  logAction("All low stock levels set", "Set low stock warning level for " + rows.length + " items for " + label + " to " + value, site, "Multiple items", value);
+  document.getElementById("setAllLowStockValue").value = "";
+  render();
+  alert("Low stock levels updated.");
+}
+
+function setAllStockLevel(){
+  if(!isAdmin()){
+    alert("Only admin can set all stock levels.");
+    return;
+  }
+
+  const site = document.getElementById("setAllStockSite").value;
+  const value = Number(document.getElementById("setAllStockValue").value);
+
+  if(isNaN(value) || value < 0){
+    alert("Enter a valid stock quantity.");
+    return;
+  }
+
+  const rows = inventory.filter(row => site === "All" || row.site === site);
+  if(rows.length === 0){
+    alert("No stock items found for that selection.");
+    return;
+  }
+
+  const label = site === "All" ? "all sites" : site;
+  if(!confirm("Set " + rows.length + " stock items for " + label + " to " + value + "?")){
+    return;
+  }
+
+  rows.forEach(row => {
+    row.caseQty = value;
+    row.individualQty = 0;
+    syncRowQty(row);
+  });
+
+  logAction("All stock levels set", "Set " + rows.length + " items for " + label + " to " + value, site, "Multiple items", value);
+  document.getElementById("setAllStockValue").value = "";
+  render();
+  alert("Stock levels updated.");
+}
+
+function renderAuditLog(){
+  const body = document.getElementById("adminLogBody");
+  if(!body) return;
+  body.innerHTML = "";
+  if(auditLog.length === 0){
+    body.innerHTML = '<tr><td colspan="8">No log entries yet.</td></tr>';
+    return;
+  }
+  auditLog.slice().reverse().forEach(entry => {
+    body.innerHTML += `
+      <tr>
+        <td>${escapeHtml(entry.date)}</td>
+        <td>${escapeHtml(entry.account || entry.accountLabel)}</td>
+        <td>${escapeHtml(entry.role)}</td>
+        <td>${escapeHtml(entry.action)}</td>
+        <td>${escapeHtml(entry.site)}</td>
+        <td>${escapeHtml(entry.item)}</td>
+        <td>${escapeHtml(entry.qty)}</td>
+        <td>${escapeHtml(entry.details)}</td>
+      </tr>`;
+  });
+}
+
+function clearAuditLog(){
+  if(!isAdmin()){
+    alert("Only admin can clear the log.");
+    return;
+  }
+  if(confirm("Clear the admin log?")){
+    auditLog = [];
+    save();
+    renderAuditLog();
+  }
+}
+
+
+function switchPage(location, mode){
+  const access = enforceAccess(location, mode);
+  location = access.location;
+  mode = access.mode;
+
+  currentLocation = location;
+  currentMode = mode;
+
+  document.getElementById("waverleyMenu").classList.toggle("active", location === "Waverley" && ["stock","count","waste"].includes(mode));
+  document.getElementById("worksopMenu").classList.toggle("active", location === "Worksop" && ["stock","count","waste"].includes(mode));
+
+  document.getElementById("dashboardPage").classList.toggle("hidden", mode !== "dashboard");
+  document.getElementById("stockPage").classList.toggle("hidden", mode !== "stock");
+  document.getElementById("countPage").classList.toggle("hidden", mode !== "count");
+  document.getElementById("wastePage").classList.toggle("hidden", mode !== "waste");
+  document.getElementById("soldPage").classList.toggle("hidden", mode !== "sold");
+  document.getElementById("transferPage").classList.toggle("hidden", mode !== "transfer");
+  const exportPage = document.getElementById("exportPage");
+  if(exportPage) exportPage.classList.toggle("hidden", mode !== "export");
+  const caseSizesPage = document.getElementById("caseSizesPage");
+  if(caseSizesPage) caseSizesPage.classList.toggle("hidden", mode !== "caseSizes");
+  const settingsPage = document.getElementById("settingsPage");
+  if(settingsPage) settingsPage.classList.toggle("hidden", mode !== "settings");
+  const logPage = document.getElementById("logPage");
+  if(logPage) logPage.classList.toggle("hidden", mode !== "log");
+  document.getElementById("tab_dashboard").classList.toggle("active", mode === "dashboard");
+  document.getElementById("tab_transfer").classList.toggle("active", mode === "transfer");
+  const exportTab = document.getElementById("tab_export");
+  if(exportTab) exportTab.classList.toggle("active", mode === "export");
+  const caseSizesTab = document.getElementById("tab_case_sizes");
+  if(caseSizesTab) caseSizesTab.classList.toggle("active", mode === "caseSizes");
+  const settingsTab = document.getElementById("tab_settings");
+  if(settingsTab) settingsTab.classList.toggle("active", mode === "settings");
+  const logTab = document.getElementById("tab_log");
+  if(logTab) logTab.classList.toggle("active", mode === "log");
+
+  document.getElementById("stockPageTitle").innerText = location + " Stock";
+  document.getElementById("countPageTitle").innerText = location + " Stock Count";
+  const soldTitle = document.getElementById("soldPageTitle"); if(soldTitle) soldTitle.innerText = location + " Sold Items";
+  document.getElementById("wastePageTitle").innerText = location + " Waste Log";
+  document.getElementById("invoiceTitle").innerText = location + " Invoice History";
+  document.getElementById("invoiceLocationLabel").innerText = location;
+
+  document.getElementById("invoiceText").value = "";
+  document.getElementById("previewBody").innerHTML = "";
+  previewItems = [];
+  render();
+}
+
+function findStock(site, item){
+  const clean = normaliseName(item).toLowerCase();
+  return inventory.find(r => r.site === site && r.item.toLowerCase() === clean);
+}
+
+function sortInventory(){
+  inventory.sort((a,b) => {
+    if(a.site !== b.site) return a.site.localeCompare(b.site);
+    return a.item.localeCompare(b.item);
+  });
+}
+
+function seedCoreItems(){
+  LOCATIONS.forEach(site => {
+    CORE_ITEMS.forEach(item => {
+      if(!findStock(site, item)){
+        inventory.push({site, item, qty:0, caseQty:0, individualQty:0, price:0, individualPrice:0, caseSize:0, actual:"", supplier:"Bidfood"});
+      }
+    });
+  });
+  sortInventory();
+  render();
+  alert("Core items added to both locations.");
+}
+
+function setStock(site, item, caseQty, individualQty, price, individualPrice){
+  item = normaliseName(item);
+  caseQty = Number(caseQty || 0);
+  individualQty = Number(individualQty || 0);
+  price = Number(price || 0);
+
+  if(!item || isNaN(caseQty) || isNaN(individualQty) || isNaN(price)){
+    alert("Please enter a valid item, case quantity, individual quantity, case price and individual price.");
+    return false;
+  }
+
+  const existing = findStock(site, item);
+  if(existing){
+    existing.caseQty = caseQty;
+    existing.individualQty = individualQty;
+    syncRowQty(existing);
+    if(isAdmin()){
+      existing.price = price;
+      existing.individualPrice = individualPrice;
+    }
+  } else {
+    const qty = caseQty + individualQty;
+    inventory.push({site, item, qty, caseQty, individualQty, price:isAdmin() ? price : 0, individualPrice:isAdmin() ? individualPrice : 0, caseSize:0, actual:"", supplier:currentSupplier});
+  }
+  sortInventory();
+  return true;
+}
+
+function adjustStock(site, item, amount){
+  item = normaliseName(item);
+  amount = Number(amount);
+  if(!item || isNaN(amount)) return;
+  const existing = findStock(site, item);
+  if(existing){
+    existing.caseQty = Number(existing.caseQty || 0) + amount;
+    syncRowQty(existing);
+  } else {
+    inventory.push({site, item, qty:amount, caseQty:amount, individualQty:0, price:0, individualPrice:0, caseSize:0, actual:"", supplier:currentSupplier});
+  }
+  sortInventory();
+}
+
+function setStockFromForm(){
+  if(!allowedSite(currentLocation)){
+    alert("You can only edit stock for your own site.");
+    return;
+  }
+
+  const ok = setStock(
+    currentLocation,
+    document.getElementById("sku").value,
+    document.getElementById("caseQty").value,
+    document.getElementById("individualQty").value,
+    document.getElementById("price").value,
+    document.getElementById("individualPrice") ? document.getElementById("individualPrice").value : 0
+  );
+  if(ok){
+    document.getElementById("sku").value = "";
+    document.getElementById("caseQty").value = "";
+    document.getElementById("individualQty").value = "";
+    document.getElementById("price").value = "";
+    if(document.getElementById("individualPrice")) document.getElementById("individualPrice").value = "";
+    render();
+  }
+}
+
+function currentInventory(){
+  return inventory.filter(r => r.site === currentLocation);
+}
+
+function getOriginalIndex(row){
+  return inventory.indexOf(row);
+}
+
+function setExactRow(index){
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit stock for your own site.");
+    return;
+  }
+
+  const caseQty = Number(document.getElementById("editCaseQty_" + index).value);
+  const individualQty = Number(document.getElementById("editIndividualQty_" + index).value);
+
+  if(isNaN(caseQty) || isNaN(individualQty)){ alert("Enter valid case and individual quantities."); return; }
+
+  const beforeQty = totalQty(inventory[index]);
+  inventory[index].caseQty = caseQty;
+  inventory[index].individualQty = individualQty;
+  syncRowQty(inventory[index]);
+  logAction("Stock quantity set", "Changed from " + beforeQty + " to " + inventory[index].qty + " (Case: " + caseQty + ", Individual: " + individualQty + ")", inventory[index].site, inventory[index].item, inventory[index].qty);
+  render();
+}
+
+function editItemName(index){
+  if(!isAdmin()){
+    alert("Only admin can edit item names.");
+    return;
+  }
+
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit items for your own site.");
+    return;
+  }
+
+  const currentName = inventory[index].item;
+  const newName = normaliseName(prompt("Item name:", currentName));
+
+  if(!newName) return;
+
+  const oldName = inventory[index].item;
+  inventory[index].item = newName;
+  logAction("Item renamed", "Renamed from " + oldName + " to " + newName, inventory[index].site, newName);
+  render();
+}
+
+function editItemPrice(index){
+  if(!isAdmin()){
+    alert("Only admin can edit item prices.");
+    return;
+  }
+
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit prices for your own site.");
+    return;
+  }
+
+  const currentPrice = Number(inventory[index].price || 0);
+  const priceInput = prompt("Price (£):", currentPrice);
+
+  if(priceInput === null) return;
+
+  const newPrice = Number(priceInput);
+  if(isNaN(newPrice)){
+    alert("Please enter a valid price.");
+    return;
+  }
+
+  const oldPrice = inventory[index].price;
+  inventory[index].price = newPrice;
+  logAction("Price changed", "Price changed from " + oldPrice + " to " + newPrice, inventory[index].site, inventory[index].item);
+  render();
+}
+
+function editIndividualItemPrice(index){
+  if(!isAdmin()){
+    alert("Only admin can edit individual item prices.");
+    return;
+  }
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit prices for your own site.");
+    return;
+  }
+  const currentPrice = Number(inventory[index].individualPrice || 0);
+  const priceInput = prompt("Individual price (£):", currentPrice);
+  if(priceInput === null) return;
+  const newPrice = Number(priceInput);
+  if(isNaN(newPrice) || newPrice < 0){
+    alert("Please enter a valid individual price.");
+    return;
+  }
+  const oldPrice = Number(inventory[index].individualPrice || 0);
+  inventory[index].individualPrice = newPrice;
+  logAction("Individual price changed", "Individual price changed from " + oldPrice + " to " + newPrice, inventory[index].site, inventory[index].item);
+  render();
+}
+
+function increaseQty(index){
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit stock for your own site.");
+    return;
+  }
+  inventory[index].caseQty = Number(inventory[index].caseQty || 0) + 1;
+  syncRowQty(inventory[index]);
+  logAction("Case stock increased", "+ case", inventory[index].site, inventory[index].item, 1);
+  render();
+}
+
+function decreaseQty(index){
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit stock for your own site.");
+    return;
+  }
+  inventory[index].caseQty = Number(inventory[index].caseQty || 0) - 1;
+  syncRowQty(inventory[index]);
+  logAction("Case stock decreased", "- case", inventory[index].site, inventory[index].item, -1);
+  render();
+}
+
+function increaseIndividualQty(index){
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit stock for your own site.");
+    return;
+  }
+  inventory[index].individualQty = Number(inventory[index].individualQty || 0) + 1;
+  syncRowQty(inventory[index]);
+  logAction("Individual stock increased", "+ individual", inventory[index].site, inventory[index].item, 1);
+  render();
+}
+
+function decreaseIndividualQty(index){
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only edit stock for your own site.");
+    return;
+  }
+  inventory[index].individualQty = Number(inventory[index].individualQty || 0) - 1;
+  syncRowQty(inventory[index]);
+  logAction("Individual stock decreased", "- individual", inventory[index].site, inventory[index].item, -1);
+  render();
+}
+
+function removeItem(index){
+  if(typeof isAdmin === "function" && !isAdmin()){
+    alert("Only admin can remove stock items.");
+    return;
+  }
+  if(!allowedSite(inventory[index].site)){
+    alert("You can only remove stock for your own site.");
+    return;
+  }
+
+  if(confirm("Remove " + inventory[index].item + " from " + inventory[index].site + "?")){
+    const removed = inventory[index];
+    inventory.splice(index, 1);
+    logAction("Stock item removed", "Removed stock item", removed.site, removed.item, removed.qty);
+    render();
+  }
+}
+
+function updateActual(index){
+  const caseEl = document.getElementById("actualCase_" + index);
+  const individualEl = document.getElementById("actualIndividual_" + index);
+  const caseValue = caseEl ? caseEl.value : "";
+  const individualValue = individualEl ? individualEl.value : "";
+  inventory[index].actualCase = caseValue;
+  inventory[index].actualIndividual = individualValue;
+  const caseNum = Number(caseValue || 0);
+  const individualNum = Number(individualValue || 0);
+  inventory[index].actual = (caseValue !== "" || individualValue !== "") && !isNaN(caseNum) && !isNaN(individualNum) ? caseNum + individualNum : "";
+  logAction("Actual count updated", "Actual case set to " + (caseValue || 0) + ", actual individual set to " + (individualValue || 0), inventory[index].site, inventory[index].item, inventory[index].actual);
+  render();
+}
+
+function setItemPrice(index){
+  const price = Number(document.getElementById("priceOnly_" + index).value);
+  if(isNaN(price)){ alert("Enter a valid price."); return; }
+  inventory[index].price = price;
+  logAction("Price changed", "Price set to " + price, inventory[index].site, inventory[index].item);
+  render();
+}
+
+function applyActualAsStock(index){
+  const actualCase = Number(inventory[index].actualCase || 0);
+  const actualIndividual = Number(inventory[index].actualIndividual || 0);
+  const hasActual = inventory[index].actualCase !== "" || inventory[index].actualIndividual !== "";
+  if(!hasActual || isNaN(actualCase) || isNaN(actualIndividual)){ alert("Enter an actual case and/or individual count first."); return; }
+  if(confirm("Set system stock for " + inventory[index].item + " to the actual counted case and individual amounts?")){
+    const beforeCase = Number(inventory[index].caseQty || 0);
+    const beforeIndividual = Number(inventory[index].individualQty || 0);
+    inventory[index].caseQty = actualCase;
+    inventory[index].individualQty = actualIndividual;
+    syncRowQty(inventory[index]);
+    inventory[index].actualCase = "";
+    inventory[index].actualIndividual = "";
+    inventory[index].actual = "";
+    logAction("Actual count applied", "System stock changed from Case " + beforeCase + ", Individual " + beforeIndividual + " to Case " + actualCase + ", Individual " + actualIndividual, inventory[index].site, inventory[index].item, inventory[index].qty);
+    render();
+  }
+}
+
+const WINGERS_ALLOWED_INVOICE_ITEMS = [
+  "MARINATED CHICKEN INNER FILLETS PACKED",
+  "MARINATED CHICKEN WINGS",
+  "12\" AMBIENT FLOUR TORTILLA WRAPS 10X10",
+  "WINGERS HOT & SPICY COATING 12.5kg",
+  "Wingers Ancho Seasoning 2KG",
+  "Wingers Gravy 2KG",
+  "Buttermilk 5L",
+  "Biscoff Cookie Pack of 6",
+  "Choc Chip Cookie Pack of 6",
+  "Funfetti Cookie Pack of 6",
+  "Oreo Cookie Pack of 6",
+  "RED VELVET Cookie Pack of 6"
+];
+
+function cleanWingersInvoiceDescription(description){
+  const raw = String(description || "").replace(/\s+/g, " ").trim();
+  const upper = raw.toUpperCase();
+  const map = [
+    [/MARINATED CHICKEN INNER FILLETS/i, "MARINATED CHICKEN INNER FILLETS PACKED"],
+    [/MARINATED CHICKEN WINGS/i, "MARINATED CHICKEN WINGS"],
+    [/12\s*"?\s*AMBIENT\s+FLOUR\s+TORTILLA\s+WRAPS/i, "12\" AMBIENT FLOUR TORTILLA WRAPS 10X10"],
+    [/WINGERS\s+HOT\s*&\s*SPICY\s+COATING/i, "WINGERS HOT & SPICY COATING 12.5kg"],
+    [/WINGERS\s+ANCHO\s+SEASONING/i, "Wingers Ancho Seasoning 2KG"],
+    [/WINGERS\s+GRAVY/i, "Wingers Gravy 2KG"],
+    [/BUTTERMILK/i, "Buttermilk 5L"],
+    [/BISCOFF\s+COOKIE/i, "Biscoff Cookie Pack of 6"],
+    [/CHOC\s+CHIP\s+COOKIE/i, "Choc Chip Cookie Pack of 6"],
+    [/FUNFETTI\s+COOKIE/i, "Funfetti Cookie Pack of 6"],
+    [/OREO\s+COOKIE/i, "Oreo Cookie Pack of 6"],
+    [/RED\s+VELVET\s+COOKIE/i, "RED VELVET Cookie Pack of 6"]
+  ];
+  for(const [re, preferred] of map){
+    if(re.test(raw)) return preferred;
+  }
+  return "";
+}
+
+function filterAndRenameWingersRows(rows){
+  const combined = {};
+  (rows || []).forEach(r => {
+    const item = cleanWingersInvoiceDescription(r.item || r.description);
+    const qty = Number(r.qty ?? r.quantity);
+    if(!item || isNaN(qty)) return;
+    const key = item.toLowerCase();
+    if(!combined[key]) combined[key] = {item, qty:0};
+    combined[key].qty += qty;
+  });
+  return Object.values(combined);
+}
+
+function parseInvoiceText(text){
+  const knownItems = inventory.map(r => r.item);
+  const uniqueKnownItems = [...new Set(knownItems)];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const items = [];
+
+  function addParsed(item, qty){
+    item = normaliseName(item);
+    qty = Number(qty);
+    if(item && !isNaN(qty) && qty !== 0){
+      const badWords = ["invoice","subtotal","total","vat","account","delivery","date","page","order","customer","address","tel","email"];
+      const lower = item.toLowerCase();
+      if(badWords.some(w => lower === w || lower.startsWith(w + " "))) return;
+      items.push({item, qty});
+    }
+  }
+
+  lines.forEach(line => {
+    let cleaned = line.replace(/£\s*\d+(?:\.\d{2})?/g, " ");
+    cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+    // Important: invoice preview lines are usually saved as "Item name, Quantity".
+    // Check that format BEFORE matching known stock item names, because some real
+    // item names contain numbers, e.g. "Pack of 6", "12\" wraps", "12.5kg".
+    // Otherwise those numbers can be mistaken for the delivered quantity.
+    let parts = cleaned.split(",");
+    if(parts.length < 2) parts = cleaned.split("|");
+    if(parts.length >= 2){
+      const qtyText = parts.slice(1).join(" ");
+      const qtyNums = qtyText.match(/-?\d+(?:\.\d+)?/g);
+      const qty = qtyNums ? Number(qtyNums[qtyNums.length - 1]) : NaN;
+      addParsed(parts[0], qty);
+      return;
+    }
+
+    // Supplier PDF lines with item codes should use supplier-specific parsing first.
+    const wingersRow = parseSingleWingersLine(cleaned);
+    if(wingersRow){
+      addParsed(wingersRow.item, wingersRow.qty);
+      return;
+    }
+
+    for(const known of uniqueKnownItems){
+      const escaped = known.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp("\\b" + escaped + "\\b", "i");
+      if(re.test(cleaned)){
+        const afterItem = cleaned.replace(re, " ");
+        const nums = afterItem.match(/-?\d+(?:\.\d+)?/g);
+        if(nums && nums.length){
+          // Prefer the last number outside the item name for plain pasted lines.
+          addParsed(known, nums[nums.length - 1]);
+          return;
+        }
+      }
+    }
+
+    const simpleMatch = cleaned.match(/^(.+?)\s+(-?\d+(?:\.\d+)?)$/);
+    if(simpleMatch){
+      addParsed(simpleMatch[1], simpleMatch[2]);
+      return;
+    }
+
+    const rowMatch = cleaned.match(/^(?:\d{4,}\s+)?(.+?)\s+(-?\d+(?:\.\d+)?)\s+(?:\d+\.\d{2}\s+){1,3}\d+\.\d{2}$/);
+    if(rowMatch){
+      addParsed(rowMatch[1], rowMatch[2]);
+    }
+  });
+
+  const combined = {};
+  items.forEach(r => {
+    const key = r.item.toLowerCase();
+    if(!combined[key]) combined[key] = {item:r.item, qty:0};
+    combined[key].qty += Number(r.qty);
+  });
+
+  return Object.values(combined);
+}
+
+
+function extractDescriptionQuantityFromPdfPages(pages){
+  // Reads PDF text by x/y position and only takes the Description and Quantity Ordered/Supplied columns.
+  // This is built for Bidfood-style invoices where the table can wrap descriptions across multiple lines/pages.
+  const lines = [];
+
+  pages.forEach((contentItems, pageIndex) => {
+    contentItems.forEach(raw => {
+      const text = String(raw.str || "").trim();
+      if(!text) return;
+      const x = raw.transform[4];
+      const y = raw.transform[5];
+      let line = lines.find(l => l.pageIndex === pageIndex && Math.abs(l.y - y) <= 4);
+      if(!line){
+        line = {pageIndex, y, items:[]};
+        lines.push(line);
+      }
+      line.items.push({text, x, y, pageIndex});
+    });
+  });
+
+  lines.sort((a,b) => a.pageIndex === b.pageIndex ? b.y - a.y : a.pageIndex - b.pageIndex);
+  lines.forEach(l => l.items.sort((a,b) => a.x - b.x));
+
+  // Sensible defaults for Bidfood PDFs. These are updated if headers are found.
+  let codeX = 39;
+  let descX = 74;
+  let brandX = 175;
+  let qtyX = 322;
+  let unitPriceX = 356;
+
+  // Header words are sometimes split across two lines, e.g. Quantity / Supplied.
+  lines.forEach(line => {
+    line.items.forEach(it => {
+      const t = it.text.toLowerCase();
+      if(t === "code") codeX = it.x;
+      if(t === "description") descX = it.x;
+      if(t === "brand") brandX = it.x;
+      if(t === "quantity" || t === "supplied" || t === "ordered") qtyX = it.x;
+      if(t === "unit") unitPriceX = it.x;
+    });
+  });
+
+  const rows = [];
+  let current = null;
+  let tableStarted = false;
+
+  function cleanDescription(text){
+    return normaliseName(String(text || "").replace(/\s+/g, " ").trim());
+  }
+
+  function finishCurrent(){
+    if(current && current.description && current.qty !== null && current.qty !== undefined){
+      const desc = cleanDescription(current.description);
+      const qty = Number(current.qty);
+      if(desc && !isNaN(qty)) rows.push({item: desc, qty});
+    }
+    current = null;
+  }
+
+  function isHeaderOrFooter(text){
+    return /copyright|subtotal|tax invoice|customer code|delivery date|invoice date|order no|web\/order ref|your order ref|invoice to|deliver to|phone:|fax:|tax no:|bidfood|access 26|langley mill/i.test(text);
+  }
+
+  function isMoneyOrTotalLine(text){
+    return /^£?\d+(?:,\d{3})*(?:\.\d{2})?(?:\s+£?\d+(?:,\d{3})*(?:\.\d{2})?){1,5}$/.test(text.trim());
+  }
+
+  lines.forEach(line => {
+    const items = line.items;
+    const lineText = items.map(i => i.text).join(" ").trim();
+    if(!lineText) return;
+
+    const lower = lineText.toLowerCase();
+    if(lower.includes("description") || lower.includes("quantity") || lower.includes("supplied")){
+      tableStarted = true;
+      return;
+    }
+
+    if(!tableStarted) return;
+    if(isHeaderOrFooter(lineText) || isMoneyOrTotalLine(lineText)) return;
+
+    const codeItem = items.find(i => /^\d{4,6}$/.test(i.text) && i.x <= descX - 5);
+    const qtyItem = items.find(i => {
+      const txt = i.text.replace(/,/g, "");
+      return i.x >= qtyX - 25 && i.x < unitPriceX - 5 && /^-?\d+(?:\.\d+)?$/.test(txt);
+    });
+
+    const descParts = items
+      .filter(i => i.x >= descX - 8 && i.x < brandX - 5)
+      .map(i => i.text)
+      .filter(t => !/^\d{4,6}$/.test(t));
+
+    if(codeItem){
+      finishCurrent();
+      current = {
+        description: descParts.join(" "),
+        qty: qtyItem ? Number(qtyItem.text.replace(/,/g, "")) : null
+      };
+      return;
+    }
+
+    // Continuation lines for long descriptions, including a description carried onto page 2.
+    if(current && descParts.length){
+      current.description += " " + descParts.join(" ");
+      if(current.qty === null && qtyItem) current.qty = Number(qtyItem.text.replace(/,/g, ""));
+    }
+  });
+
+  finishCurrent();
+  return rows;
+}
+
+
+function extractBidfoodDescriptionQtyFromPdfPages(pages){
+  // Bidfood Direct PDFs use fixed table columns:
+  // PRODUCT CODE | DESCRIPTION | BRAND | PACK SIZE | UNIT OF MEASURE | QUANTITY ORDERED | prices...
+  // This reads ONLY the Description column and ONLY the Quantity Ordered column.
+  const lines = [];
+
+  pages.forEach((contentItems, pageIndex) => {
+    contentItems.forEach(raw => {
+      const text = String(raw.str || "").replace(/\s+/g, " ").trim();
+      if(!text) return;
+      const x = raw.transform[4];
+      const y = raw.transform[5];
+      let line = lines.find(l => l.pageIndex === pageIndex && Math.abs(l.y - y) <= 5);
+      if(!line){
+        line = {pageIndex, y, items:[]};
+        lines.push(line);
+      }
+      line.items.push({text, x, y, pageIndex});
+    });
+  });
+
+  lines.sort((a,b) => a.pageIndex === b.pageIndex ? b.y - a.y : a.pageIndex - b.pageIndex);
+  lines.forEach(l => l.items.sort((a,b) => a.x - b.x));
+
+  const rows = [];
+  let tableStarted = false;
+  let current = null;
+
+  // Defaults match Bidfood Direct PDFs. Header detection below can refine them.
+  let descX = 80;
+  let brandX = 175;
+  let qtyX = 374;
+  let firstPriceX = 402;
+
+  lines.forEach(line => {
+    line.items.forEach((it, idx) => {
+      const t = it.text.toLowerCase();
+      if(t === "description") descX = it.x;
+      if(t === "brand") brandX = it.x;
+      if(t === "ordered") qtyX = it.x + 30; // number sits to the right of the ORDERED header
+      if(t === "price" && it.x > qtyX) firstPriceX = Math.min(firstPriceX || it.x, it.x);
+      if(t === "unit" && line.items[idx+1] && String(line.items[idx+1].text).toLowerCase() === "price") firstPriceX = it.x;
+    });
+  });
+
+  function finishCurrent(){
+    if(current && current.description && current.qty !== null && current.qty !== undefined){
+      const item = normaliseName(current.description);
+      const qty = Number(current.qty);
+      if(item && !isNaN(qty) && qty !== 0) rows.push({item, qty});
+    }
+    current = null;
+  }
+
+  function isFooterOrNonItem(text){
+    return /discount|subtotal|vat\b|total\b|copyright|customer code|order date|delivery date|web\/order ref|your order ref|order no|bidfood direct|https?:\/\//i.test(text);
+  }
+
+  lines.forEach(line => {
+    const items = line.items;
+    const lineText = items.map(i => i.text).join(" ").replace(/\s+/g, " ").trim();
+    if(!lineText) return;
+
+    const lower = lineText.toLowerCase();
+    if(lower.includes("product") || lower.includes("description") || lower.includes("quantity") || lower.includes("ordered")){
+      if(lower.includes("description") || lower.includes("ordered")) tableStarted = true;
+      return;
+    }
+    if(!tableStarted) return;
+    if(isFooterOrNonItem(lineText)){
+      finishCurrent();
+      return;
+    }
+
+    const codeItem = items.find(i => /^\d{4,6}$/.test(i.text) && i.x < descX - 10);
+    const qtyItem = items
+      .filter(i => /^-?\d+(?:\.\d+)?$/.test(String(i.text).replace(/,/g, "")))
+      .filter(i => i.x >= qtyX - 45 && i.x < firstPriceX - 5)
+      .sort((a,b) => Math.abs(a.x - qtyX) - Math.abs(b.x - qtyX))[0];
+
+    // Only take words that visually sit inside the Description column.
+    const descParts = items
+      .filter(i => i.x >= descX - 8 && i.x < brandX - 5)
+      .map(i => i.text)
+      .filter(t => !/^\d{4,6}$/.test(t));
+
+    if(codeItem){
+      finishCurrent();
+      current = {description: descParts.join(" "), qty: qtyItem ? Number(String(qtyItem.text).replace(/,/g, "")) : null};
+      return;
+    }
+
+    // Continuation row for descriptions wrapping to line 2/3.
+    // Keep it only if it starts in the Description column, not the Brand column.
+    if(current && descParts.length){
+      current.description += " " + descParts.join(" ");
+      if(current.qty === null && qtyItem) current.qty = Number(String(qtyItem.text).replace(/,/g, ""));
+    }
+  });
+
+  finishCurrent();
+  return rows;
+}
+
+function parseSingleLestaLine(line){
+  const cleanLine = String(line || "").replace(/\s+/g, " ").trim();
+  if(!cleanLine) return null;
+
+  // Lesta format example:
+  // 13213 Angelito Ice Cream Mix -12 x 1 Litre 8 CASE 12 21.50 172.00
+  // Columns after Description are: Quantity, Unit of Measure, Unit Price, Amount.
+  const uomWords = "CASE|BUCKET|BOX|BOX\\d+|ROLL|PACK|PACK\\d+|BAG|TUB|EACH|EA|UNIT|BOTTLE|CARTON";
+  const re = new RegExp("^(\\d{4,}[A-Z]?)\\s+(.+?)\\s+(-?\\d+(?:\\.\\d+)?)\\s+(?:" + uomWords + ")(?:\\s+[^£\\d]*\\d*[A-Z]*)?\\s+£?-?\\d+(?:\\.\\d+)?\\s+£?-?\\d+(?:\\.\\d+)?$", "i");
+  const m = cleanLine.match(re);
+  if(!m) return null;
+
+  const item = normaliseName(m[2]);
+  const qty = Number(m[3]);
+  if(!item || isNaN(qty)) return null;
+  return {item, qty};
+}
+
+function extractLestaDescriptionQtyFromPdfPages(pages){
+  // Reads Lesta Packaging PDFs.
+  // Uses Description as item and ONLY the Quantity column as the stock quantity.
+  const lines = [];
+
+  pages.forEach((contentItems, pageIndex) => {
+    contentItems.forEach(raw => {
+      const text = String(raw.str || "").replace(/\s+/g, " ").trim();
+      if(!text) return;
+      const x = raw.transform[4];
+      const y = raw.transform[5];
+      let line = lines.find(l => l.pageIndex === pageIndex && Math.abs(l.y - y) <= 5);
+      if(!line){
+        line = {pageIndex, y, items:[]};
+        lines.push(line);
+      }
+      line.items.push({text, x, y, pageIndex});
+    });
+  });
+
+  lines.sort((a,b) => a.pageIndex === b.pageIndex ? b.y - a.y : a.pageIndex - b.pageIndex);
+  lines.forEach(l => l.items.sort((a,b) => a.x - b.x));
+
+  const rows = [];
+  let tableStarted = false;
+  let current = null;
+
+  const codeX = 50;
+  const descX = 88;
+  const qtyX = 286;
+  const measureX = 300;
+  const unitPriceX = 420;
+
+  function cleanDescription(text){
+    return normaliseName(String(text || "").replace(/\s+/g, " ").trim());
+  }
+
+  function finishCurrent(){
+    if(current && current.description && current.qty !== null && current.qty !== undefined){
+      const item = cleanDescription(current.description);
+      const qty = Number(current.qty);
+      if(item && !isNaN(qty)) rows.push({item, qty});
+    }
+    current = null;
+  }
+
+  function isFooterOrNonItem(text){
+    return /total gbp|vat amount specification|vat identifier|invoice discount|vat base|bank details|company registration|vat registration|email:|website:|member of the fara group|order confirmation|invoice to:|ship to:|payment terms|shipment method|document date|external doc no|salesperson|bill-to customer|order no\.|page \d+ of \d+|nedham street|this order will be processed|please advise|all products must|all orders placed/i.test(text);
+  }
+
+  lines.forEach(line => {
+    const items = line.items;
+    const lineText = items.map(i => i.text).join(" ").replace(/\s+/g, " ").trim();
+    if(!lineText) return;
+
+    const lower = lineText.toLowerCase();
+    if(lower.includes("description") && lower.includes("quantity")){
+      tableStarted = true;
+      finishCurrent();
+      return;
+    }
+
+    if(!tableStarted) return;
+    if(isFooterOrNonItem(lineText)){
+      if(/total gbp|vat amount specification|vat identifier/i.test(lineText)) finishCurrent();
+      return;
+    }
+
+    const directRow = parseSingleLestaLine(lineText);
+    if(directRow){
+      finishCurrent();
+      rows.push(directRow);
+      return;
+    }
+
+    let codeItem = items.find(i => /^\d{4,}[A-Z]?$/i.test(i.text) && i.x <= descX - 5);
+    let codePlusDescription = "";
+    if(!codeItem){
+      const combined = items.find(i => /^\d{4,}[A-Z]?\s+.+/i.test(i.text) && i.x <= descX - 5);
+      if(combined){
+        const m = combined.text.match(/^(\d{4,}[A-Z]?)\s+(.+)$/i);
+        if(m){
+          codeItem = combined;
+          codePlusDescription = m[2];
+        }
+      }
+    }
+
+    const qtyItem = items
+      .filter(i => /^-?\d+(?:\.\d+)?$/.test(String(i.text).replace(/,/g, "")))
+      .filter(i => i.x >= qtyX - 35 && i.x < measureX + 8)
+      .sort((a,b) => Math.abs(a.x - qtyX) - Math.abs(b.x - qtyX))[0];
+
+    const descParts = [];
+    if(codePlusDescription) descParts.push(codePlusDescription);
+    items
+      .filter(i => i.x >= descX - 8 && i.x < qtyX - 8)
+      .forEach(i => descParts.push(i.text));
+
+    if(codeItem){
+      finishCurrent();
+      current = {
+        description: descParts.join(" "),
+        qty: qtyItem ? Number(String(qtyItem.text).replace(/,/g, "")) : null
+      };
+      return;
+    }
+
+    // Continuation lines for multi-line descriptions.
+    if(current && descParts.length){
+      current.description += " " + descParts.join(" ");
+      if(current.qty === null && qtyItem) current.qty = Number(String(qtyItem.text).replace(/,/g, ""));
+    }
+  });
+
+  finishCurrent();
+  return rows;
+}
+
+
+function extractWingersDescriptionQtyFromPdfPages(pages){
+  // Reads Wingers / A & D Food Trading PDFs.
+  // Uses ONLY the Qty Delivered column as the quantity.
+  const lines = [];
+
+  pages.forEach((contentItems, pageIndex) => {
+    contentItems.forEach(raw => {
+      const text = String(raw.str || "").replace(/\s+/g, " ").trim();
+      if(!text) return;
+      const x = raw.transform[4];
+      const y = raw.transform[5];
+      let line = lines.find(l => l.pageIndex === pageIndex && Math.abs(l.y - y) <= 5);
+      if(!line){
+        line = {pageIndex, y, items:[]};
+        lines.push(line);
+      }
+      line.items.push({text, x, y, pageIndex});
+    });
+  });
+
+  lines.sort((a,b) => a.pageIndex === b.pageIndex ? b.y - a.y : a.pageIndex - b.pageIndex);
+  lines.forEach(l => l.items.sort((a,b) => a.x - b.x));
+
+  const allHeaderItems = lines.flatMap(l => l.items);
+  const deliveredHeader = allHeaderItems.find(i => /^delivered$/i.test(i.text));
+  const orderedHeader = allHeaderItems.find(i => /^ordered$/i.test(i.text));
+  const deliveredX = deliveredHeader ? deliveredHeader.x : null;
+  const orderedX = orderedHeader ? orderedHeader.x : null;
+
+  const rows = [];
+  let tableStarted = false;
+
+  lines.forEach(line => {
+    const items = line.items;
+    const lineText = items.map(i => i.text).join(" ").replace(/\s+/g, " ").trim();
+    if(!lineText) return;
+
+    const lower = lineText.toLowerCase();
+    if(lower.includes("description")){
+      tableStarted = true;
+      return;
+    }
+
+    if(!tableStarted && !/^[A-Z0-9]+\s*:/.test(lineText)) return;
+    if(/order amount|copyright|customer code|delivery date|order date|cust ref|batch|qty ordered|qty delivered|item rate|vat|net/i.test(lineText)) return;
+
+    // First try the flattened visible row text. This is the most reliable for Wingers PDFs
+    // because the row ends with: Qty Ordered, Qty Delivered, Rate, VAT, Net.
+    const directRow = parseSingleWingersLine(lineText);
+    if(directRow){
+      rows.push(directRow);
+      return;
+    }
+
+    const hasCode = items.some((i, idx) => /^[A-Z0-9]+$/.test(i.text) && items[idx + 1] && items[idx + 1].text === ":");
+    if(hasCode){
+      const numericItems = items
+        .filter(i => /^-?\d+(?:\.\d+)?$/.test(String(i.text).replace(/,/g, "")))
+        .sort((a,b) => a.x - b.x);
+
+      let qtyItem = null;
+      if(deliveredX !== null){
+        // Take the number sitting in the Qty Delivered column, not Qty Ordered.
+        const deliveredCandidates = numericItems
+          .filter(i => Math.abs(i.x - deliveredX) <= 35)
+          .sort((a,b) => Math.abs(a.x - deliveredX) - Math.abs(b.x - deliveredX));
+        qtyItem = deliveredCandidates[0] || null;
+      }
+
+      if(!qtyItem){
+        // Fallback: after the description, the first two whole numbers are Qty Ordered and Qty Delivered.
+        // Use the second one.
+        const qtyLike = numericItems.filter(i => i.x >= 230 && i.x <= 420);
+        qtyItem = qtyLike.length >= 2 ? qtyLike[1] : qtyLike[0];
+      }
+
+      if(qtyItem){
+        const colonIndex = items.findIndex(i => i.text === ":");
+        const descriptionEndX = orderedX !== null ? orderedX - 8 : qtyItem.x - 35;
+        const descParts = items
+          .filter((i, idx) => idx > colonIndex && i.x < descriptionEndX)
+          .map(i => i.text);
+
+        const item = cleanWingersInvoiceDescription(descParts.join(" "));
+        const qty = Number(String(qtyItem.text).replace(/,/g, ""));
+        if(item && !isNaN(qty)){
+          rows.push({item, qty});
+          return;
+        }
+      }
+    }
+
+    const row = parseSingleWingersLine(lineText);
+    if(row) rows.push(row);
+  });
+
+  // Text-stream fallback for PDFs where the visual columns are flattened.
+  if(!rows.length){
+    const allText = lines.map(l => l.items.map(i => i.text).join(" ")).join(" ");
+    return extractWingersDescriptionQtyFromText(allText);
+  }
+
+  return rows;
+}
+
+function parseSingleWingersLine(line){
+  const cleanLine = String(line || "").replace(/\s+/g, " ").trim();
+  if(!cleanLine || !/^[A-Z0-9]+\s*:/.test(cleanLine)) return null;
+
+  // Wingers format example:
+  // CBIS : Biscoff Cookie Pack of 6 3 3 13.20 0.00 39.60
+  // Columns after Description are: Qty Ordered, Qty Delivered, Item Rate, VAT, Net.
+  // Descriptions can contain numbers, so this deliberately captures the LAST five numeric columns
+  // and uses the second of those five as Qty Delivered.
+  const m = cleanLine.match(/^[A-Z0-9]+\s*:\s*(.+?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+£?-?\d+(?:\.\d+)?\s+£?-?\d+(?:\.\d+)?\s+£?-?\d+(?:\.\d+)?$/);
+  if(!m) return null;
+
+  const item = cleanWingersInvoiceDescription(m[1]);
+  const qty = Number(m[3]); // Qty Delivered column
+  if(!item || isNaN(qty)) return null;
+  return {item, qty};
+}
+
+function extractWingersDescriptionQtyFromText(fullText){
+  const rows=[];
+  const text = String(fullText || "").replace(/\s+/g, " ").trim();
+  if(!text) return rows;
+
+  // Global fallback for when PDF text extraction loses line breaks.
+  const regex = /([A-Z0-9]+)\s*:\s*(.*?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+£?-?\d+(?:\.\d+)?\s+£?-?\d+(?:\.\d+)?\s+£?-?\d+(?:\.\d+)?(?=\s+[A-Z0-9]+\s*:|\s+Order Amount|$)/g;
+  let m;
+  while((m = regex.exec(text)) !== null){
+    const item = cleanWingersInvoiceDescription(m[2]);
+    const qty = Number(m[4]);
+    if(item && !isNaN(qty)) rows.push({item, qty});
+  }
+
+  return rows;
+}
+
+
+function getAIInvoiceSettingValues(source){
+  const invoiceKeyInput = document.getElementById("aiApiKey");
+  const invoiceModelInput = document.getElementById("aiModel");
+  const settingsKeyInput = document.getElementById("settingsAiApiKey");
+  const settingsModelInput = document.getElementById("settingsAiModel");
+
+  const key = source === "settings"
+    ? (settingsKeyInput ? settingsKeyInput.value.trim() : "")
+    : (invoiceKeyInput ? invoiceKeyInput.value.trim() : "");
+  const model = source === "settings"
+    ? (settingsModelInput ? settingsModelInput.value.trim() : "gpt-4o-mini")
+    : (invoiceModelInput ? invoiceModelInput.value.trim() : "gpt-4o-mini");
+
+  return { key, model: model || "gpt-4o-mini" };
+}
+
+function saveAIInvoiceSettings(){
+  const { key, model } = getAIInvoiceSettingValues("invoice");
+  saveAIInvoiceSettingsValues(key, model);
+}
+
+function saveAIInvoiceSettingsFromSettings(){
+  const { key, model } = getAIInvoiceSettingValues("settings");
+  saveAIInvoiceSettingsValues(key, model);
+}
+
+function saveAIInvoiceSettingsValues(key, model){
+  if(key) localStorage.setItem("wingiton_ai_invoice_api_key", key);
+  localStorage.setItem("wingiton_ai_invoice_model", model || "gpt-4o-mini");
+  loadAIInvoiceSettings();
+  const message = key ? "AI settings saved on this device." : "Model saved. Add an API key before using AI.";
+  setAIInvoiceStatus(message);
+  setSettingsAIInvoiceStatus(message);
+}
+
+function clearAIInvoiceSettings(){
+  localStorage.removeItem("wingiton_ai_invoice_api_key");
+  loadAIInvoiceSettings();
+  setAIInvoiceStatus("AI API key cleared from this device.");
+  setSettingsAIInvoiceStatus("AI API key cleared from this device.");
+}
+
+function loadAIInvoiceSettings(){
+  const savedKey = localStorage.getItem("wingiton_ai_invoice_api_key") || "";
+  const savedModel = localStorage.getItem("wingiton_ai_invoice_model") || "gpt-4o-mini";
+  const keyInput = document.getElementById("aiApiKey");
+  const modelInput = document.getElementById("aiModel");
+  const settingsKeyInput = document.getElementById("settingsAiApiKey");
+  const settingsModelInput = document.getElementById("settingsAiModel");
+  if(keyInput) keyInput.value = savedKey;
+  if(modelInput) modelInput.value = savedModel;
+  if(settingsKeyInput) settingsKeyInput.value = savedKey;
+  if(settingsModelInput) settingsModelInput.value = savedModel;
+}
+
+function setAIInvoiceStatus(message){
+  const status = document.getElementById("aiInvoiceStatus");
+  if(status) status.innerText = message || "";
+}
+
+function setSettingsAIInvoiceStatus(message){
+  const status = document.getElementById("settingsAiInvoiceStatus");
+  if(status) status.innerText = message || "";
+}
+
+function extractOpenAIText(data){
+  if(!data) return "";
+  if(typeof data.output_text === "string") return data.output_text;
+  const parts = [];
+  (data.output || []).forEach(out => {
+    (out.content || []).forEach(c => {
+      if(typeof c.text === "string") parts.push(c.text);
+      if(typeof c.output_text === "string") parts.push(c.output_text);
+    });
+  });
+  return parts.join("\n");
+}
+
+function cleanAIInvoiceRows(rows){
+  const combined = {};
+  (rows || []).forEach(r => {
+    const item = normaliseName(r.description || r.item || r.name || "");
+    const qty = Number(String(r.quantity ?? r.qty ?? "").replace(/[^\d.-]/g, ""));
+    if(!item || isNaN(qty) || qty === 0) return;
+    const lower = item.toLowerCase();
+    const badWords = ["invoice","subtotal","total","vat","account","delivery","date","page","order","customer","address","tel","email","net","gross"];
+    if(badWords.some(w => lower === w || lower.startsWith(w + " "))) return;
+    if(!combined[lower]) combined[lower] = {item, qty:0};
+    combined[lower].qty += qty;
+  });
+  return Object.values(combined);
+}
+
+async function readPdfForAI(file){
+  if(!window.pdfjsLib) throw new Error("PDF reader could not load.");
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+  const textParts = [];
+  const pageImages = [];
+  const pages = [];
+  const maxImagePages = Math.min(pdf.numPages, 6);
+
+  for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    pages.push(content.items);
+    const lines = [];
+    content.items.forEach(raw => {
+      const str = String(raw.str || "").trim();
+      if(!str) return;
+      const y = raw.transform ? Math.round(raw.transform[5]) : 0;
+      const x = raw.transform ? Math.round(raw.transform[4]) : 0;
+      let line = lines.find(l => Math.abs(l.y - y) <= 4);
+      if(!line){ line = {y, items:[]}; lines.push(line); }
+      line.items.push({x, str});
+    });
+    lines.sort((a,b)=>b.y-a.y);
+    lines.forEach(l => {
+      l.items.sort((a,b)=>a.x-b.x);
+      textParts.push(l.items.map(i=>i.str).join(" "));
+    });
+
+    if(pageNum <= maxImagePages){
+      const viewport = page.getViewport({scale: 1.35});
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({canvasContext: ctx, viewport}).promise;
+      pageImages.push(canvas.toDataURL("image/jpeg", 0.75));
+    }
+  }
+
+  return {text: textParts.join("\n"), pageImages, pages};
+}
+
+async function callAIInvoiceReader(pdfText, pageImages){
+  const apiKey = (document.getElementById("aiApiKey")?.value || localStorage.getItem("wingiton_ai_invoice_api_key") || "").trim();
+  const model = (document.getElementById("aiModel")?.value || localStorage.getItem("wingiton_ai_invoice_model") || "gpt-4o-mini").trim();
+  if(!apiKey) throw new Error("Add your OpenAI API key in AI invoice reader settings first.");
+
+  const prompt = `Read this supplier invoice and extract ONLY purchasable stock lines. Return the supplier item description/item name and the supplied/delivered quantity. Ignore prices, VAT, totals, dates, addresses, product codes unless the code is part of the description, and any summary/footer/header text. Use the supplier quantity column: for Bidfood use Quantity Ordered; for Wingers use Qty Delivered; for other suppliers use delivered/supplied quantity when present. If a description wraps across lines, join it. Output strict JSON with this shape only: {"items":[{"description":"Item name","quantity":1}]}.\n\nPDF text:\n${String(pdfText || "").slice(0, 45000)}`;
+
+  const content = [{type:"input_text", text: prompt}];
+  (pageImages || []).forEach(url => content.push({type:"input_image", image_url:url}));
+
+  const body = {
+    model,
+    input: [{role:"user", content}],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "invoice_items",
+        strict: true,
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  description: {type:"string"},
+                  quantity: {type:"number"}
+                },
+                required: ["description", "quantity"]
+              }
+            }
+          },
+          required: ["items"]
+        }
+      }
+    }
+  };
+
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization":"Bearer " + apiKey},
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json().catch(()=>null);
+  if(!res.ok){
+    const msg = data?.error?.message || ("AI request failed with status " + res.status);
+    throw new Error(msg);
+  }
+
+  const text = extractOpenAIText(data);
+  let parsed;
+  try{
+    parsed = JSON.parse(text);
+  } catch(err){
+    const match = text.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error("AI did not return readable JSON.");
+    parsed = JSON.parse(match[0]);
+  }
+  return cleanAIInvoiceRows(parsed.items || parsed);
+}
+
+async function loadInvoiceFileWithAI(){
+  const file = document.getElementById("invoiceFile").files[0];
+  if(!file){ alert("Select a PDF invoice first."); return; }
+  const ext = file.name.split(".").pop().toLowerCase();
+  if(ext !== "pdf"){
+    alert("AI invoice reading is for PDF invoices. Use Load File for CSV/TXT, or paste lines manually.");
+    return;
+  }
+
+  try{
+    saveAIInvoiceSettings();
+    setAIInvoiceStatus("Reading PDF and asking AI for description + quantity only...");
+    const pdfData = await readPdfForAI(file);
+    let rows = [];
+
+    // Supplier-specific readers are more accurate than AI for known table layouts.
+    // Lesta must use Description + Quantity.
+    if(/Lesta Packaging|lestapackaging|SO-\d+/i.test(pdfData.text || "")){
+      rows = extractLestaDescriptionQtyFromPdfPages(pdfData.pages || []);
+      const supplierFilter = document.getElementById("supplierFilter");
+      if(supplierFilter){ supplierFilter.value = "Lesta"; }
+      currentSupplier = "Lesta";
+    }
+
+    // Bidfood must use Description + Quantity Ordered.
+    if(!rows.length && /Bidfood Direct|BIDFOOD|bidfood/i.test(pdfData.text || "")){
+      rows = extractBidfoodDescriptionQtyFromPdfPages(pdfData.pages || []);
+      const supplierFilter = document.getElementById("supplierFilter");
+      if(supplierFilter){ supplierFilter.value = "Bidfood"; }
+      currentSupplier = "Bidfood";
+    }
+
+    if(!rows.length){
+      rows = await callAIInvoiceReader(pdfData.text, pdfData.pageImages);
+      if(/A\s*&\s*D Food Trading|Wingers/i.test(pdfData.text || "")){
+        rows = filterAndRenameWingersRows(rows);
+      }
+    }
+
+    if(!rows.length){
+      setAIInvoiceStatus("AI did not find any invoice item rows.");
+      alert("AI did not find any invoice item rows. Try the normal Load File button or paste the lines manually.");
+      return;
+    }
+    document.getElementById("invoiceText").value = rows.map(r => r.item + ", " + r.qty).join("\n");
+    previewInvoice();
+    setAIInvoiceStatus("AI read complete. Check the preview before adding to stock.");
+    alert("AI read complete. Only description/item name and quantity were imported. Check the preview before adding to stock.");
+  } catch(err){
+    console.error(err);
+    setAIInvoiceStatus("AI read failed: " + err.message);
+    alert("AI read failed: " + err.message);
+  }
+}
+
+async function loadInvoiceFile(){
+  const file = document.getElementById("invoiceFile").files[0];
+  if(!file){ alert("Select an invoice file first."); return; }
+
+  const ext = file.name.split(".").pop().toLowerCase();
+
+  if(ext === "pdf"){
+    if(!window.pdfjsLib){
+      alert("PDF reader could not load. Check internet connection, or paste the invoice text manually.");
+      return;
+    }
+
+    try{
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+      const pdfPages = [];
+
+      for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        pdfPages.push(content.items);
+      }
+
+      let allText = pdfPages.flat().map(i=>String(i.str||'')).join(' ');
+      let parsedRows;
+      if(/Lesta Packaging|lestapackaging|SO-\d+/i.test(allText)){
+        parsedRows = extractLestaDescriptionQtyFromPdfPages(pdfPages);
+        const supplierFilter = document.getElementById("supplierFilter");
+        if(supplierFilter){ supplierFilter.value = "Lesta"; }
+        currentSupplier = "Lesta";
+      } else if(/Bidfood Direct|BIDFOOD|bidfood/i.test(allText)){
+        parsedRows = extractBidfoodDescriptionQtyFromPdfPages(pdfPages);
+        const supplierFilter = document.getElementById("supplierFilter");
+        if(supplierFilter){ supplierFilter.value = "Bidfood"; }
+        currentSupplier = "Bidfood";
+      } else if(/A\s*&\s*D Food Trading|Wingers/i.test(allText)){
+        parsedRows = extractWingersDescriptionQtyFromPdfPages(pdfPages);
+        if(!parsedRows.length){
+          parsedRows = extractWingersDescriptionQtyFromText(allText);
+        }
+        parsedRows = filterAndRenameWingersRows(parsedRows);
+      } else {
+        parsedRows = extractDescriptionQuantityFromPdfPages(pdfPages);
+      }
+
+      const combined = {};
+      parsedRows.forEach(r => {
+        const key = r.item.toLowerCase();
+        if(!combined[key]) combined[key] = {item:r.item, qty:0};
+        combined[key].qty += Number(r.qty);
+      });
+
+      const invoiceLines = Object.values(combined).map(r => r.item + ", " + r.qty).join("\n");
+      document.getElementById("invoiceText").value = invoiceLines;
+      previewInvoice();
+      alert("PDF read complete. Only the item description and quantity have been imported. Check the preview before adding to stock.");
+    } catch(err){
+      console.error(err);
+      alert("Could not read this PDF. It may be scanned/image-based. Paste the Description and Quantity manually.");
+    }
+
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    document.getElementById("invoiceText").value = e.target.result;
+    previewInvoice();
+  };
+  reader.readAsText(file);
+}
+
+function previewInvoice(){
+  previewItems = parseInvoiceText(document.getElementById("invoiceText").value);
+  renderPreviewItems();
+}
+
+function removePreviewItem(index){
+  previewItems.splice(index, 1);
+  renderPreviewItems();
+}
+
+function updatePreviewItem(index){
+  const name = normaliseName(document.getElementById("previewName_" + index).value);
+  const qty = Number(document.getElementById("previewQty_" + index).value);
+
+  if(!name){ alert("Enter a valid item name."); return; }
+  if(isNaN(qty)){ alert("Enter a valid quantity."); return; }
+
+  previewItems[index].item = name;
+  previewItems[index].qty = qty;
+  renderPreviewItems();
+}
+
+function findCurrentStockForPreview(item){
+  const key = String(item || "").toLowerCase();
+  const exact = inventory.find(r => r.site === currentLocation && r.item.toLowerCase() === key);
+  if(exact) return totalQty(exact) || 0;
+  return 0;
+}
+
+function updatePreviewTotals(){
+  previewItems.forEach((r, index) => {
+    const nameInput = document.getElementById("previewName_" + index);
+    const qtyInput = document.getElementById("previewQty_" + index);
+    const currentCell = document.getElementById("previewCurrent_" + index);
+    const newCell = document.getElementById("previewNew_" + index);
+    const name = nameInput ? normaliseName(nameInput.value) : r.item;
+    const supplied = qtyInput ? Number(qtyInput.value) : Number(r.qty);
+    const current = findCurrentStockForPreview(name);
+    if(currentCell) currentCell.innerText = current;
+    if(newCell) newCell.innerText = isNaN(supplied) ? current : current + supplied;
+  });
+}
+
+function renderPreviewItems(){
+  const body = document.getElementById("previewBody");
+  body.innerHTML = "";
+
+  if(previewItems.length === 0){
+    body.innerHTML = '<tr><td colspan="5">No items in preview.</td></tr>';
+    return;
+  }
+
+  previewItems.forEach((r, index) => {
+    const current = findCurrentStockForPreview(r.item);
+    const supplied = Number(r.qty) || 0;
+    const newLevel = current + supplied;
+    body.innerHTML += `
+      <tr>
+        <td><input id="previewName_${index}" type="text" value="${r.item}" oninput="updatePreviewTotals()"></td>
+        <td><input id="previewQty_${index}" type="number" step="0.01" value="${r.qty}" oninput="updatePreviewTotals()"></td>
+        <td id="previewCurrent_${index}">${current}</td>
+        <td id="previewNew_${index}">${newLevel}</td>
+        <td>
+          <button onclick="updatePreviewItem(${index})">Save</button>
+          <button class="danger" onclick="removePreviewItem(${index})">Remove</button>
+        </td>
+      </tr>`;
+  });
+}
+
+function addInvoiceToStock(){
+  if(!allowedSite(currentLocation)){
+    alert("You can only upload stock for your own site.");
+    return;
+  }
+
+  const file = document.getElementById("invoiceFile").files[0];
+
+  // Important: do NOT re-run previewInvoice() here.
+  // Capture any edited preview names/quantities first.
+  previewItems = previewItems.map((r, index) => {
+    const nameInput = document.getElementById("previewName_" + index);
+    const qtyInput = document.getElementById("previewQty_" + index);
+    return {
+      item: nameInput ? normaliseName(nameInput.value) : r.item,
+      qty: qtyInput ? Number(qtyInput.value) : Number(r.qty)
+    };
+  }).filter(r => r.item && !isNaN(r.qty));
+
+  // The previewItems list may have been edited by removing unwanted rows.
+  if(previewItems.length === 0){
+    alert("No invoice items to add. Preview the invoice first.");
+    return;
+  }
+
+  previewItems.forEach(r => { adjustStock(currentLocation, r.item, r.qty); logAction("Invoice stock added", "Added from invoice", currentLocation, r.item, r.qty); });
+  invoices.push({
+    name:file ? file.name : "Pasted Invoice",
+    site:currentLocation,
+    itemCount:previewItems.length,
+    date:new Date().toLocaleString()
+  });
+
+  document.getElementById("invoiceText").value = "";
+  previewItems = [];
+  renderPreviewItems();
+  render();
+  alert("Only the items left in the preview were added to " + currentLocation + " stock.");
+}
+
+function deleteInvoice(index){
+  if(confirm("Delete invoice record: " + invoices[index].name + "?")){
+    const deleted = invoices[index];
+    invoices.splice(index, 1);
+    logAction("Invoice deleted", "Deleted invoice " + deleted.name, deleted.site);
+    render();
+  }
+}
+
+function pdfEscape(value){
+  return String(value === undefined || value === null ? "" : value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+function addPdfSection(lines, title, rows, formatter){
+  lines.push("", title, "-".repeat(title.length));
+  if(!rows || rows.length === 0){
+    lines.push("No records.");
+    return;
+  }
+  rows.forEach((row, index) => {
+    const text = formatter(row, index);
+    if(Array.isArray(text)) text.forEach(line => lines.push(line));
+    else lines.push(text);
+  });
+}
+
+function buildExportLines(locationFilter){
+  const isLocationExport = locationFilter === "Waverley" || locationFilter === "Worksop";
+  const title = isLocationExport ? `WingItOnLTD - ${locationFilter} Data Export` : "WingItOnLTD - All Data Export";
+  const stockRows = isLocationExport ? inventory.filter(r => r.site === locationFilter) : inventory;
+  const invoiceRows = isLocationExport ? invoices.filter(r => r.site === locationFilter) : invoices;
+  const wasteRows = isLocationExport ? wasteLog.filter(r => r.site === locationFilter) : wasteLog;
+  const transferRows = isLocationExport ? transferLog.filter(r => r.from === locationFilter || r.to === locationFilter) : transferLog;
+  const userRows = isLocationExport ? USERS.filter(r => r.role === "Admin" || r.site === locationFilter) : USERS;
+
+  const lines = [];
+  lines.push(title);
+  lines.push("Exported: " + new Date().toLocaleString());
+  lines.push("Export Scope: " + (isLocationExport ? locationFilter : "All sites"));
+  lines.push("");
+  lines.push("This report contains the data stored in this browser for the website.");
+
+  addPdfSection(lines, "Inventory / Stock", stockRows, r => {
+    const qty = totalQty(r);
+    const total = stockValue(r);
+    return `${r.site || ""} | ${r.supplier || ""} | ${r.item || ""} | Case QTY: ${r.caseQty || 0} | Individual QTY: ${r.individualQty || 0} | Current Qty: ${qty} | Case Price: ${money(r.price)} | Individual Price: ${money(r.individualPrice || 0)} | Value: ${money(total)} | Actual Count: ${r.actual || ""} | Low Stock Level: ${r.lowStock === undefined ? 5 : r.lowStock}`;
+  });
+
+  addPdfSection(lines, "Invoice History", invoiceRows, r => {
+    return `${r.date || ""} | ${r.site || ""} | ${r.name || ""} | Items: ${r.itemCount || 0}`;
+  });
+
+  addPdfSection(lines, "Waste Log", wasteRows, r => {
+    const value = Number(r.qty || 0) * Number(r.price || 0);
+    return `${r.date || ""} | ${r.site || ""} | ${r.item || ""} | Qty: ${r.qty || 0} | Price: ${money(r.price)} | Value: ${money(value)} | Reason: ${r.reason || ""}`;
+  });
+
+  addPdfSection(lines, "Transfer History", transferRows, r => {
+    return `${r.date || ""} | ${r.item || ""} | Qty: ${r.qty || 0} | From: ${r.from || ""} | To: ${r.to || ""}`;
+  });
+
+  addPdfSection(lines, "Login Accounts", userRows, r => {
+    return `${r.label || r.role || "Account"} | Username: ${r.username || ""} | Role: ${r.role || ""} | Site: ${r.site || ""}`;
+  });
+
+  addPdfSection(lines, "Admin Log", auditLog, r => {
+    return `${r.date || ""} | ${r.account || ""} | ${r.role || ""} | ${r.action || ""} | ${r.site || ""} | ${r.item || ""} | Qty: ${r.qty || ""} | ${r.details || ""}`;
+  });
+
+  return lines;
+}
+
+function makePdfFromLines(lines){
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const marginLeft = 40;
+  const marginTop = 45;
+  const lineHeight = 14;
+  const maxChars = 92;
+  const maxLinesPerPage = Math.floor((pageHeight - (marginTop * 2)) / lineHeight);
+
+  const wrapped = [];
+  lines.forEach(line => {
+    const text = String(line || "");
+    if(text.length <= maxChars){
+      wrapped.push(text);
+      return;
+    }
+    let remaining = text;
+    while(remaining.length > maxChars){
+      let cut = remaining.lastIndexOf(" ", maxChars);
+      if(cut < 40) cut = maxChars;
+      wrapped.push(remaining.slice(0, cut));
+      remaining = remaining.slice(cut).trim();
+    }
+    if(remaining) wrapped.push(remaining);
+  });
+
+  const pages = [];
+  for(let i = 0; i < wrapped.length; i += maxLinesPerPage){
+    pages.push(wrapped.slice(i, i + maxLinesPerPage));
+  }
+
+  const objects = [];
+  function addObject(content){
+    objects.push(content);
+    return objects.length;
+  }
+
+  const catalogId = addObject("<< /Type /Catalog /Pages 2 0 R >>");
+  const pagesId = addObject("");
+  const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const pageIds = [];
+
+  pages.forEach((pageLines, pageIndex) => {
+    let stream = "BT\n/F1 10 Tf\n";
+    pageLines.forEach((line, lineIndex) => {
+      const y = pageHeight - marginTop - (lineIndex * lineHeight);
+      stream += `${marginLeft} ${y} Td (${pdfEscape(line)}) Tj\n`;
+      stream += `${-marginLeft} ${-y} Td\n`;
+    });
+    stream += `40 25 Td (Page ${pageIndex + 1} of ${pages.length}) Tj\nET`;
+    const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+    pageIds.push(pageId);
+  });
+
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map(id => id + " 0 R").join(" ")}] /Count ${pageIds.length} >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((obj, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for(let i = 1; i < offsets.length; i++){
+    pdf += String(offsets[i]).padStart(10, "0") + " 00000 n \n";
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return new Blob([pdf], {type:"application/pdf"});
+}
+
+
+function normaliseExportScope(scope){
+  return scope === "Waverley" || scope === "Worksop" ? scope : "All";
+}
+
+function reportTitleFor(type){
+  if(type === "stock_count") return "Stock Count";
+  if(type === "waste") return "Waste";
+  if(type === "transferred_stock") return "Transferred Stock";
+  return "Stock";
+}
+
+function buildReportLines(scope, type){
+  const exportScope = normaliseExportScope(scope);
+  const isAll = exportScope === "All";
+  const reportTitle = reportTitleFor(type);
+  const lines = [];
+  const dateText = new Date().toLocaleString();
+
+  lines.push(`WingItOnLTD - ${exportScope} ${reportTitle} Export`);
+  lines.push("Exported: " + dateText);
+  lines.push("Export Scope: " + exportScope);
+
+  if(type === "waste"){
+    const rows = isAll ? wasteLog : wasteLog.filter(r => r.site === exportScope);
+    addPdfSection(lines, `${exportScope} Waste`, rows, r => {
+      const value = Number(r.value !== undefined ? r.value : Number(r.qty || 0) * Number(r.price || 0));
+      return `${r.date || ""} | ${r.site || ""} | ${r.item || ""} | Qty: ${r.qty || 0} | Price: ${money(r.price)} | Value: ${money(value)} | Reason: ${r.reason || ""}`;
+    });
+    return lines;
+  }
+
+  if(type === "transferred_stock"){
+    const rows = isAll ? transferLog : transferLog.filter(r => r.from === exportScope || r.to === exportScope);
+    addPdfSection(lines, `${exportScope} Transferred Stock`, rows, r => {
+      const direction = isAll ? `${r.from || ""} to ${r.to || ""}` : (r.from === exportScope ? `Sent to ${r.to || ""}` : `Received from ${r.from || ""}`);
+      return `${r.date || ""} | ${r.item || ""} | Qty: ${r.qty || 0} | ${direction}`;
+    });
+    return lines;
+  }
+
+  const rows = isAll ? inventory : inventory.filter(r => r.site === exportScope);
+
+  if(type === "stock_count"){
+    addPdfSection(lines, `${exportScope} Stock Count`, rows, r => {
+      const actualRaw = r.actual;
+      const actual = Number(actualRaw);
+      const hasActual = actualRaw !== "" && actualRaw !== undefined && actualRaw !== null && !isNaN(actual);
+      const shouldHave = totalQty(r);
+      const diff = hasActual ? actual - shouldHave : 0;
+      const valueDiff = diff * Number(r.price || 0);
+      return `${r.site || ""} | ${r.supplier || ""} | ${r.item || ""} | Should Have: ${shouldHave.toFixed(2)} | Actual Count: ${hasActual ? actual.toFixed(2) : ""} | Difference: ${hasActual ? diff.toFixed(2) : ""} | Price Each: ${money(r.price)} | Value Difference: ${hasActual ? money(valueDiff) : ""}`;
+    });
+    return lines;
+  }
+
+  addPdfSection(lines, `${exportScope} Stock`, rows, r => {
+    return `${r.site || ""} | ${r.supplier || ""} | ${r.item || ""} | Case QTY: ${r.caseQty || 0} | Individual QTY: ${r.individualQty || 0} | Current Qty: ${totalQty(r)} | Case Price: ${money(r.price)} | Individual Price: ${money(r.individualPrice || 0)} | Total Value: ${money(stockValue(r))} | Low Stock Level: ${r.lowStock === undefined ? 5 : r.lowStock}`;
+  });
+  return lines;
+}
+
+function exportReportPDF(scope, type){
+  let exportScope = normaliseExportScope(scope);
+  const user = currentUser();
+  if(user && user.role !== "Admin" && exportScope !== user.site){
+    exportScope = user.site;
+  }
+  const safeType = type === "stock_count" || type === "waste" || type === "transferred_stock" ? type : "stock";
+  const blob = makePdfFromLines(buildReportLines(exportScope, safeType));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0,10);
+  const scopePart = exportScope.toLowerCase();
+  const typePart = safeType.replace(/_/g, "-");
+  a.href = url;
+  a.download = `wingiton-${scopePart}-${typePart}-${date}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  if(typeof logAction === "function") logAction("PDF export", `Exported ${exportScope} ${reportTitleFor(safeType)} PDF`, exportScope === "All" ? "" : exportScope);
+}
+
+function exportDataToPDF(locationFilter){
+  if(!isAdmin()){
+    alert("Only admin can export data.");
+    return;
+  }
+
+  const validLocation = locationFilter === "Waverley" || locationFilter === "Worksop" ? locationFilter : "all";
+  const blob = makePdfFromLines(buildExportLines(validLocation === "all" ? null : validLocation));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0,10);
+  const scope = validLocation === "all" ? "all" : validLocation.toLowerCase();
+  a.href = url;
+  a.download = `wingiton-data-export-${scope}-${date}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  if(typeof logAction === "function") logAction("PDF export", "Exported " + scope + " data to PDF", validLocation === "all" ? "" : validLocation);
+}
+
+
+function csvEscape(value){
+  const text = String(value === undefined || value === null ? "" : value);
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function addCsvRows(rows, section, headers, mapper, output){
+  output.push(["Section"].concat(headers).map(csvEscape).join(","));
+  rows.forEach(row => output.push([section].concat(mapper(row)).map(csvEscape).join(",")));
+  output.push("");
+}
+
+function exportDataToCSV(){
+  if(!isAdmin()){
+    alert("Only admin can export data.");
+    return;
+  }
+  const output = [];
+  addCsvRows(inventory, "Inventory", ["Site","Supplier","Item","Case QTY","Individual QTY","Current Qty","Case Price","Individual Price","Value","Actual Count","Low Stock Level"], r => [r.site, r.supplier || "", r.item, r.caseQty || 0, r.individualQty || 0, totalQty(r), r.price || 0, r.individualPrice || 0, stockValue(r), r.actual || "", r.lowStock === undefined ? 5 : r.lowStock], output);
+  addCsvRows(invoices, "Invoice History", ["Date","Site","Name","Item Count"], r => [r.date, r.site, r.name, r.itemCount], output);
+  addCsvRows(wasteLog, "Waste Log", ["Date","Site","Item","Qty","Price","Value","Reason"], r => [r.date, r.site, r.item, r.qty, r.price, r.value, r.reason || ""], output);
+  addCsvRows(transferLog, "Transfer History", ["Date","Item","Qty","From","To"], r => [r.date, r.item, r.qty, r.from, r.to], output);
+  addCsvRows(USERS, "Login Accounts", ["Account","Username","Role","Site"], r => [r.label || "", r.username || "", r.role || "", r.site || ""], output);
+  addCsvRows(auditLog, "Admin Log", ["Date","Account","Role","Action","Site","Item","Qty","Details"], r => [r.date, r.account, r.role, r.action, r.site, r.item, r.qty, r.details], output);
+
+  const blob = new Blob([output.join("\n")], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `wingiton-data-export-all-${date}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  logAction("CSV export", "Exported all data to CSV");
+}
+
+function exportData(){
+  exportDataToPDF();
+}
+
+function clearAllData(){
+  if(!isAdmin()){
+    alert("Only admin can reset the app.");
+    return;
+  }
+
+  if(confirm("Reset the whole app? This deletes inventory and invoice history from this browser.")){
+    localStorage.removeItem("wingiton_inventory_v9");
+    localStorage.removeItem("wingiton_invoices_v9");
+    localStorage.removeItem("wingiton_waste_v20");
+    localStorage.removeItem("wingiton_transfers_v20");
+    localStorage.removeItem("wingiton_audit_log_v1");
+    inventory = [];
+    invoices = [];
+    auditLog = [];
+    LOCATIONS.forEach(site => {
+      CORE_ITEMS.forEach(item => inventory.push({site, item, qty:0, caseQty:0, individualQty:0, price:0, individualPrice:0, caseSize:0, actual:""}));
+    });
+    save();
+    render();
+  }
+}
+
+
+
+function changeSupplier(supplier){
+  currentSupplier = supplier;
+  const supplierFilter = document.getElementById("supplierFilter");
+  if(supplierFilter && supplierFilter.value !== supplier) supplierFilter.value = supplier;
+  const countSupplierFilter = document.getElementById("countSupplierFilter");
+  if(countSupplierFilter && countSupplierFilter.value !== supplier) countSupplierFilter.value = supplier;
+  render();
+}
+
+
+function adminAddItemToBothSites(){
+  if(!isAdmin()){
+    alert("Only admin can add new items to both sites.");
+    return;
+  }
+
+  const supplier = document.getElementById("newItemSupplier").value;
+  const item = normaliseName(document.getElementById("newItemName").value);
+  const price = Number(document.getElementById("newItemPrice").value);
+
+  if(!item){
+    alert("Please enter an item name.");
+    return;
+  }
+
+  if(isNaN(price)){
+    alert("Please enter a valid price.");
+    return;
+  }
+
+  ["Waverley","Worksop"].forEach(site => {
+    const existing = inventory.find(r =>
+      r.site === site &&
+      r.item.toLowerCase() === item.toLowerCase() &&
+      (r.supplier || "Bidfood") === supplier
+    );
+
+    if(existing){
+      existing.price = price;
+    } else {
+      inventory.push({
+        site,
+        item,
+        qty:0,
+        caseQty:0,
+        individualQty:0,
+        price,
+        actual:"",
+        supplier
+      });
+    }
+  });
+
+  document.getElementById("newItemName").value = "";
+  document.getElementById("newItemPrice").value = "";
+  currentSupplier = supplier;
+  logAction("Admin item added", "Added/updated item on both sites under " + supplier, "All", item);
+  const supplierFilter = document.getElementById("supplierFilter");
+  if(supplierFilter) supplierFilter.value = supplier;
+  const countSupplierFilter = document.getElementById("countSupplierFilter");
+  if(countSupplierFilter) countSupplierFilter.value = supplier;
+
+  render();
+  alert(item + " added to both Waverley and Worksop.");
+}
+
+
+function clearStockSearch(){
+  document.getElementById("stockSearch").value = "";
+  render();
+}
+
+function searchedInventory(){
+  const supplierEl = document.getElementById("supplierFilter");
+  if(supplierEl) currentSupplier = supplierEl.value;
+
+  const q = (document.getElementById("stockSearch") ? document.getElementById("stockSearch").value : "").toLowerCase().trim();
+  let rows = currentInventory().filter(r => (r.supplier || "Bidfood") === currentSupplier);
+  if(!q) return rows;
+  return rows.filter(r => r.item.toLowerCase().includes(q));
+}
+
+function populateWasteItems(){
+  const select = document.getElementById("wasteItem");
+  if(!select) return;
+  const previous = select.value;
+  const searchEl = document.getElementById("wasteItemSearch");
+  const q = searchEl ? searchEl.value.toLowerCase().trim() : "";
+  const rows = currentInventory().filter(r => !q || String(r.item || "").toLowerCase().includes(q));
+  select.innerHTML = "";
+  if(rows.length === 0){
+    select.innerHTML = '<option value="">No matching items</option>';
+    return;
+  }
+  rows.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.item;
+    opt.textContent = r.item;
+    select.appendChild(opt);
+  });
+  if(previous && rows.some(r => r.item === previous)){
+    select.value = previous;
+  }
+}
+
+function clearWasteItemSearch(){
+  const searchEl = document.getElementById("wasteItemSearch");
+  if(searchEl) searchEl.value = "";
+  populateWasteItems();
+}
+
+function addWaste(){
+  if(!allowedSite(currentLocation)){
+    alert("You can only add waste for your own site.");
+    return;
+  }
+
+  const item = document.getElementById("wasteItem").value;
+  const qty = Number(document.getElementById("wasteQty").value);
+  const reason = document.getElementById("wasteReason").value.trim();
+  const wasteType = document.getElementById("wasteType").value;
+
+  if(!item || isNaN(qty) || qty <= 0){
+    alert("Enter a valid waste item and quantity.");
+    return;
+  }
+
+  const stock = findStock(currentLocation, item);
+  const price = stock ? Number(stock.price || 0) : 0;
+
+  if(stock){
+    if(wasteType === "individual"){
+      stock.individualQty = Number(stock.individualQty || 0) - qty;
+    } else {
+      stock.caseQty = Number(stock.caseQty || 0) - qty;
+    }
+    syncRowQty(stock);
+  }
+
+  wasteLog.push({
+    date:new Date().toLocaleString(),
+    site:currentLocation,
+    item,
+    qty,
+    price,
+    value: qty * price,
+    reason,
+    wasteType
+  });
+
+  document.getElementById("wasteQty").value = "";
+  document.getElementById("wasteReason").value = "";
+  logAction("Waste logged (" + wasteType + ")", "Reason: " + reason, currentLocation, item, -qty);
+  render();
+}
+
+function deleteWaste(index){
+  if(!isAdmin()){
+    alert("Only admin can delete waste history.");
+    return;
+  }
+
+  if(confirm("Delete this waste log entry? This will not automatically add stock back.")){
+    const deleted = wasteLog[index];
+    wasteLog.splice(index,1);
+    logAction("Waste entry deleted", "Deleted waste entry", deleted.site, deleted.item, deleted.qty);
+    render();
+  }
+}
+
+function populateTransferItems(){
+  const user = currentUser();
+  const fromSelect = document.getElementById("transferFrom");
+  const toSelect = document.getElementById("transferTo");
+
+  if(user && user.role !== "Admin"){
+    if(fromSelect){
+      fromSelect.value = user.site;
+      fromSelect.disabled = true;
+    }
+    if(toSelect){
+      toSelect.value = user.site === "Waverley" ? "Worksop" : "Waverley";
+    }
+  } else {
+    if(fromSelect) fromSelect.disabled = false;
+  }
+
+  const from = document.getElementById("transferFrom") ? document.getElementById("transferFrom").value : "Waverley";
+  const select = document.getElementById("transferItem");
+  if(!select) return;
+
+  select.innerHTML = "";
+  inventory.filter(r => r.site === from).forEach(r => {
+    select.innerHTML += `<option>${r.item}</option>`;
+  });
+
+  const to = document.getElementById("transferTo");
+  if(to && to.value === from){
+    to.value = from === "Waverley" ? "Worksop" : "Waverley";
+  }
+}
+
+function addTransfer(){
+  const from = document.getElementById("transferFrom").value;
+  const to = document.getElementById("transferTo").value;
+
+  if(!allowedSite(from)){
+    alert("You can only transfer stock from your own site.");
+    return;
+  }
+  const item = document.getElementById("transferItem").value;
+  const qty = Number(document.getElementById("transferQty").value);
+
+  if(from === to){
+    alert("From and To locations must be different.");
+    return;
+  }
+
+  if(!item || isNaN(qty) || qty <= 0){
+    alert("Enter a valid item and quantity.");
+    return;
+  }
+
+  const fromStock = findStock(from, item);
+  if(!fromStock){
+    alert("Item not found in " + from + ".");
+    return;
+  }
+
+  fromStock.caseQty = Number(fromStock.caseQty || 0) - qty;
+  syncRowQty(fromStock);
+
+  const toStock = findStock(to, item);
+  if(toStock){
+    toStock.caseQty = Number(toStock.caseQty || 0) + qty;
+    syncRowQty(toStock);
+  } else {
+    inventory.push({
+      site:to,
+      item,
+      qty,
+      caseQty:qty,
+      individualQty:0,
+      price:Number(fromStock.price || 0),
+      actual:"",
+      supplier:fromStock.supplier || currentSupplier
+    });
+  }
+
+  transferLog.push({
+    date:new Date().toLocaleString(),
+    item,
+    qty,
+    from,
+    to
+  });
+
+  document.getElementById("transferQty").value = "";
+  logAction("Stock transferred", "Transferred from " + from + " to " + to, from, item, qty);
+  render();
+}
+
+function deleteTransfer(index){
+  if(!isAdmin()){
+    alert("Only admin can delete transfer history.");
+    return;
+  }
+
+  if(confirm("Delete this transfer record? This will not reverse the stock movement.")){
+    const deleted = transferLog[index];
+    transferLog.splice(index,1);
+    logAction("Transfer deleted", "Deleted transfer from " + deleted.from + " to " + deleted.to, deleted.from, deleted.item, deleted.qty);
+    render();
+  }
+}
+
+
+
+function renderDashboard(){
+  const totalStockValue = inventory.reduce((sum,r) => sum + (totalQty(r) * Number(r.price || 0)), 0);
+  const wasteValue = wasteLog.reduce((sum,w) => sum + Number(w.value || 0), 0);
+
+  document.getElementById("dashTotalStockValue").innerText = "Total Stock Value: " + money(totalStockValue);
+  document.getElementById("dashTotalItems").innerText = "Total Items: " + inventory.length;
+  document.getElementById("dashWasteValue").innerText = "Waste Value: " + money(wasteValue);
+  document.getElementById("dashTransferCount").innerText = "Transfers: " + transferLog.length;
+
+  const siteBody = document.getElementById("dashboardSiteBody");
+  siteBody.innerHTML = "";
+  LOCATIONS.forEach(site => {
+    const rows = inventory.filter(r => r.site === site);
+    const siteValue = rows.reduce((sum,r) => sum + (totalQty(r) * Number(r.price || 0)), 0);
+    const zeroStock = rows.filter(r => totalQty(r) <= 0).length;
+    const wasteCount = wasteLog.filter(w => w.site === site).length;
+
+    siteBody.innerHTML += `
+      <tr>
+        <td>${site}</td>
+        <td>${rows.length}</td>
+        <td>${money(siteValue)}</td>
+        <td>${zeroStock}</td>
+        <td>${wasteCount}</td>
+      </tr>`;
+  });
+
+  const lowBody = document.getElementById("dashboardLowStockBody");
+  const lowStockSite = document.getElementById("lowStockSiteFilter") ? document.getElementById("lowStockSiteFilter").value : "Waverley";
+  const lowRows = inventory.filter(r => r.site === lowStockSite && totalQty(r) <= Number(r.lowStock === undefined ? 5 : r.lowStock));
+  lowBody.innerHTML = "";
+  if(lowRows.length === 0){
+    lowBody.innerHTML = '<tr><td colspan="2">No low stock items for ' + lowStockSite + '.</td></tr>';
+  } else {
+    lowRows.forEach(r => {
+      lowBody.innerHTML += `
+        <tr>
+          <td>${r.item}</td>
+          <td>${totalQty(r).toFixed(2)} / Low: ${Number(r.lowStock === undefined ? 5 : r.lowStock).toFixed(2)}</td>
+        </tr>`;
+    });
+  }
+
+  const wasteBody = document.getElementById("dashboardWasteBody");
+  const recentWasteSite = document.getElementById("recentWasteSiteFilter") ? document.getElementById("recentWasteSiteFilter").value : "Waverley";
+  const recentWaste = wasteLog.filter(w => w.site === recentWasteSite).slice(-8).reverse();
+  wasteBody.innerHTML = "";
+  if(recentWaste.length === 0){
+    wasteBody.innerHTML = '<tr><td colspan="6">No waste logged for ' + recentWasteSite + '.</td></tr>';
+  } else {
+    recentWaste.forEach(w => {
+      wasteBody.innerHTML += `
+        <tr>
+          <td>${w.date}</td>
+          <td>${w.site}</td>
+          <td>${w.item}</td>
+          <td>${Number(w.qty || 0).toFixed(2)}</td>
+          <td>${money(w.value || 0)}</td>
+          <td>${w.reason || ""}</td>
+        </tr>`;
+    });
+  }
+
+  const transferBody = document.getElementById("dashboardTransferBody");
+  const recentTransferSite = document.getElementById("recentTransferSiteFilter") ? document.getElementById("recentTransferSiteFilter").value : "Waverley";
+  const recentTransfers = transferLog.filter(t => t.from === recentTransferSite || t.to === recentTransferSite).slice(-8).reverse();
+  transferBody.innerHTML = "";
+  if(recentTransfers.length === 0){
+    transferBody.innerHTML = '<tr><td colspan="5">No transfers for ' + recentTransferSite + '.</td></tr>';
+  } else {
+    recentTransfers.forEach(t => {
+      transferBody.innerHTML += `
+        <tr>
+          <td>${t.date}</td>
+          <td>${t.item}</td>
+          <td>${Number(t.qty || 0).toFixed(2)}</td>
+          <td>${t.from}</td>
+          <td>${t.to}</td>
+        </tr>`;
+    });
+  }
+}
+
+
+
+function foodSalesStorageKey(){
+  return "wingiton_food_sales_" + currentLocation;
+}
+
+function saveFoodSalesValue(){
+  const el = document.getElementById("foodSalesValue");
+  if(el) localStorage.setItem(foodSalesStorageKey(), String(el.value || ""));
+}
+
+function renderFoodCostSummary(){
+  const salesEl = document.getElementById("foodSalesValue");
+  const actualValueEl = document.getElementById("actualStockValue");
+  const percentEl = document.getElementById("foodCostPercentage");
+  if(!salesEl || !actualValueEl || !percentEl) return;
+  const saved = localStorage.getItem(foodSalesStorageKey()) || "";
+  if(document.activeElement !== salesEl) salesEl.value = saved;
+  let actualValue = 0;
+  currentInventory().forEach(row => {
+    const actualCaseRaw = row.actualCase === undefined ? "" : row.actualCase;
+    const actualIndividualRaw = row.actualIndividual === undefined ? "" : row.actualIndividual;
+    const actualCase = Number(actualCaseRaw || 0);
+    const actualIndividual = Number(actualIndividualRaw || 0);
+    if((actualCaseRaw !== "" || actualIndividualRaw !== "") && !isNaN(actualCase) && !isNaN(actualIndividual)){
+      actualValue += (actualCase * Number(row.price || 0)) + (actualIndividual * Number(row.individualPrice || 0));
+    }
+  });
+  const sales = Number(salesEl.value || 0);
+  const percent = sales > 0 ? (actualValue / sales) * 100 : 0;
+  actualValueEl.innerText = money(actualValue);
+  percentEl.innerText = percent.toFixed(2) + "%";
+}
+
+function handleSoldTextKeydown(event){
+  if(event.key === "Enter" && !event.shiftKey){
+    event.preventDefault();
+    applySoldItemsFromText();
+  } else {
+    setTimeout(renderSoldPreview, 0);
+  }
+}
+
+function parseSoldItemsText(text){
+  const rows = [];
+  String(text || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+    let parts = line.split(",");
+    if(parts.length < 2) parts = line.split("\t");
+    if(parts.length < 2) parts = line.split("|");
+    let item = "";
+    let qty = NaN;
+    if(parts.length >= 2){
+      qty = Number(String(parts[parts.length - 1]).replace(/[^\d.-]/g, ""));
+      item = normaliseName(parts.slice(0, parts.length - 1).join(" "));
+    } else {
+      const m = line.match(/^(.+?)\s+(-?\d+(?:\.\d+)?)$/);
+      if(m){ item = normaliseName(m[1]); qty = Number(m[2]); }
+    }
+    if(item && !isNaN(qty) && qty !== 0) rows.push({item, qty});
+  });
+  const combined = {};
+  rows.forEach(r => {
+    const key = r.item.toLowerCase();
+    if(!combined[key]) combined[key] = {item:r.item, qty:0};
+    combined[key].qty += Number(r.qty);
+  });
+  return Object.values(combined);
+}
+
+function findBestSoldMatch(site, item){
+  const wanted = normaliseName(item).toLowerCase();
+  let row = inventory.find(r => r.site === site && String(r.item || "").toLowerCase() === wanted);
+  if(row) return row;
+  row = inventory.find(r => r.site === site && String(r.item || "").toLowerCase().includes(wanted));
+  if(row) return row;
+  row = inventory.find(r => r.site === site && wanted.includes(String(r.item || "").toLowerCase()));
+  return row || null;
+}
+
+function renderSoldPreview(){
+  const body = document.getElementById("soldPreviewBody");
+  const textEl = document.getElementById("soldText");
+  if(!body || !textEl) return;
+  const rows = parseSoldItemsText(textEl.value);
+  if(rows.length === 0){
+    body.innerHTML = '<tr><td colspan="5">Paste sold items above.</td></tr>';
+    return;
+  }
+  body.innerHTML = "";
+  rows.forEach(r => {
+    const match = findBestSoldMatch(currentLocation, r.item);
+    const currentInd = match ? Number(match.individualQty || 0) : 0;
+    const newInd = currentInd - Number(r.qty || 0);
+    body.innerHTML += `<tr><td>${match ? match.item : r.item}</td><td>${Number(r.qty).toFixed(2)}</td><td>${match ? currentInd.toFixed(2) : "-"}</td><td>${match ? newInd.toFixed(2) : "-"}</td><td>${match ? "Ready" : "Item not found"}</td></tr>`;
+  });
+}
+
+function applySoldItemsFromText(){
+  if(!allowedSite(currentLocation)){
+    alert("You can only change stock for your own site.");
+    return;
+  }
+  const textEl = document.getElementById("soldText");
+  if(!textEl) return;
+  const rows = parseSoldItemsText(textEl.value);
+  if(rows.length === 0){ alert("Paste sold items first."); return; }
+  let applied = 0;
+  const missing = [];
+  rows.forEach(r => {
+    const match = findBestSoldMatch(currentLocation, r.item);
+    if(!match){ missing.push(r.item); return; }
+    const before = Number(match.individualQty || 0);
+    match.individualQty = before - Number(r.qty || 0);
+    syncRowQty(match);
+    logAction("Sold item applied", "Removed sold quantity from Individual Qty. Before: " + before + ", After: " + match.individualQty, match.site, match.item, -Number(r.qty || 0));
+    applied++;
+  });
+  save();
+  render();
+  renderSoldPreview();
+  alert("Applied " + applied + " sold item line(s)." + (missing.length ? " Not found: " + missing.join(", ") : ""));
+}
+
+function render(){
+  migrateRows();
+  sortInventory();
+  if(typeof applyUserNavigation === "function") applyUserNavigation();
+  if(typeof renderSettings === "function") renderSettings();
+  if(typeof renderAuditLog === "function") renderAuditLog();
+  if(typeof renderCaseSizeSettings === "function") renderCaseSizeSettings();
+    updateBranding();
+  if(typeof updateBranding === "function") updateBranding();
+  renderDashboard();
+
+  const inventoryBody = document.getElementById("inventoryBody");
+  inventoryBody.innerHTML = "";
+
+  const visibleInventoryRows = searchedInventory();
+  const inventoryTotalPrice = visibleInventoryRows.reduce((sum, row) => sum + stockValue(row), 0);
+  const inventoryTotalPriceEl = document.getElementById("inventoryTotalPrice");
+  if(inventoryTotalPriceEl) inventoryTotalPriceEl.innerText = money(inventoryTotalPrice);
+
+  visibleInventoryRows.forEach(row => {
+    const index = getOriginalIndex(row);
+    inventoryBody.innerHTML += `
+      <tr class="${totalQty(row) <= Number(row.lowStock === undefined ? 5 : row.lowStock) ? 'low-stock-row' : ''}">
+        <td>${escapeHtml(row.item)} ${isAdmin() ? `<button class="smallBtn" onclick="editItemName(${index})">Edit</button>` : ""}<br><span class="small">In case: ${Number(row.caseSize || 0) > 0 ? Number(row.caseSize || 0).toFixed(2) + " individual" : "Not set"}</span></td>
+        <td><input class="caseInput" id="editCaseQty_${index}" type="number" step="0.01" value="${Number(row.caseQty || 0)}"><br><button onclick="increaseQty(${index})">+</button> <button onclick="decreaseQty(${index})">-</button><br><button onclick="setExactRow(${index})">Save</button></td>
+        <td><input class="individualInput" id="editIndividualQty_${index}" type="number" step="0.01" value="${Number(row.individualQty || 0)}"><br><button onclick="increaseIndividualQty(${index})">+</button> <button onclick="decreaseIndividualQty(${index})">-</button><br><button onclick="setExactRow(${index})">Save</button></td>
+        <td>${money(row.price)} ${isAdmin() ? `<button class="smallBtn" onclick="editItemPrice(${index})">Edit</button>` : ""}</td>
+        <td>${money(row.individualPrice || 0)} ${isAdmin() ? `<button class="smallBtn" onclick="editIndividualItemPrice(${index})">Edit</button>` : ""}</td>
+        <td>${money(stockValue(row))}</td>
+        <td>${Number(row.lowStock === undefined ? 5 : row.lowStock).toFixed(2)}</td>
+        <td>
+          ${isAdmin() ? `<button class="danger" onclick="removeItem(${index})">Remove</button>` : ""}
+        </td>
+      </tr>`;
+  });
+
+  if(visibleInventoryRows.length === 0){
+    inventoryBody.innerHTML = '<tr><td colspan="8">No items for this supplier/location.</td></tr>';
+  }
+
+  const stockCountBody = document.getElementById("stockCountBody");
+  stockCountBody.innerHTML = "";
+
+  const countSupplierEl = document.getElementById("countSupplierFilter");
+  if(countSupplierEl) currentSupplier = countSupplierEl.value;
+  const stockCountRows = currentInventory().filter(r => (r.supplier || "Bidfood") === currentSupplier);
+
+  let totalValueDiff = 0;
+
+  stockCountRows.forEach(row => {
+    const index = getOriginalIndex(row);
+    const actualCaseRaw = row.actualCase === undefined ? "" : row.actualCase;
+    const actualIndividualRaw = row.actualIndividual === undefined ? "" : row.actualIndividual;
+    const actualCase = Number(actualCaseRaw || 0);
+    const actualIndividual = Number(actualIndividualRaw || 0);
+    const hasActual = (actualCaseRaw !== "" || actualIndividualRaw !== "") && !isNaN(actualCase) && !isNaN(actualIndividual);
+    const caseDiff = hasActual ? actualCase - Number(row.caseQty || 0) : 0;
+    const individualDiff = hasActual ? actualIndividual - Number(row.individualQty || 0) : 0;
+    const valueDiff = (caseDiff * Number(row.price || 0)) + (individualDiff * Number(row.individualPrice || 0));
+    totalValueDiff += valueDiff;
+    const diffClass = valueDiff < 0 ? "negative" : valueDiff > 0 ? "positive" : "";
+
+    stockCountBody.innerHTML += `
+      <tr class="${diffClass}">
+        <td>${escapeHtml(row.item)}<br><span class="small">In case: ${Number(row.caseSize || 0) > 0 ? Number(row.caseSize || 0).toFixed(2) + " individual" : "Not set"}</span></td>
+        <td>${Number(row.caseQty || 0).toFixed(2)}</td>
+        <td>${Number(row.individualQty || 0).toFixed(2)}</td>
+        <td><input class="actualCaseInput" id="actualCase_${index}" type="number" step="0.01" value="${actualCaseRaw}" onchange="updateActual(${index})" onkeyup="updateActual(${index})"></td>
+        <td><input class="actualIndividualInput" id="actualIndividual_${index}" type="number" step="0.01" value="${actualIndividualRaw}" onchange="updateActual(${index})" onkeyup="updateActual(${index})"></td>
+        <td>${hasActual ? caseDiff.toFixed(2) : "-"}</td>
+        <td>${hasActual ? individualDiff.toFixed(2) : "-"}</td>
+        <td>${money(row.price)}</td>
+        <td>${money(row.individualPrice || 0)}</td>
+        <td>${hasActual ? money(valueDiff) : "-"}</td>
+        <td><button onclick="applyActualAsStock(${index})">Use Actual As Stock</button></td>
+      </tr>`;
+  });
+
+  if(stockCountRows.length === 0){
+    stockCountBody.innerHTML = '<tr><td colspan="11">No items for this supplier/location.</td></tr>';
+  }
+renderFoodCostSummary();
+  renderSoldPreview();
+const list = document.getElementById("invoiceList");
+  list.innerHTML = "";
+  const locationInvoices = invoices.filter(inv => inv.site === currentLocation);
+  if(locationInvoices.length === 0){
+    list.innerHTML = '<p class="small">No invoices saved for this location yet.</p>';
+  } else {
+    locationInvoices.forEach(inv => {
+      const originalIndex = invoices.indexOf(inv);
+      list.innerHTML += `
+        <div class="invoice-row">
+          <span class="invoice-text">${inv.name} — ${inv.itemCount} items — ${inv.date}</span>
+          <button class="danger" onclick="deleteInvoice(${originalIndex})">Delete Invoice</button>
+        </div>`;
+    });
+  }
+
+
+  populateWasteItems();
+  populateTransferItems();
+
+  const wasteBody = document.getElementById("wasteBody");
+  if(wasteBody){
+    wasteBody.innerHTML = "";
+    const rows = wasteLog.filter(w => w.site === currentLocation);
+    if(rows.length === 0){
+      wasteBody.innerHTML = '<tr><td colspan="8">No waste found for this location.</td></tr>';
+    } else {
+      rows.slice().reverse().forEach(w => {
+        const originalIndex = wasteLog.indexOf(w);
+        wasteBody.innerHTML += `
+          <tr>
+            <td>${w.date}</td>
+            <td>${w.item}</td>
+            <td>${Number(w.qty).toFixed(2)}</td>
+            <td>${w.wasteType === "individual" ? "Individual" : "Case"}</td>
+            <td>${money(w.price)}</td>
+            <td>${money(w.value)}</td>
+            <td>${w.reason || ""}</td>
+            <td>${isAdmin() ? `<button class="danger" onclick="deleteWaste(${originalIndex})">Delete</button>` : ""}</td>
+          </tr>`;
+      });
+    }
+  }
+
+  const transferBody = document.getElementById("transferBody");
+  if(transferBody){
+    transferBody.innerHTML = "";
+    if(transferLog.length === 0){
+      transferBody.innerHTML = '<tr><td colspan="6">No transfers yet.</td></tr>';
+    } else {
+      transferLog.slice().reverse().forEach(t => {
+        const originalIndex = transferLog.indexOf(t);
+        transferBody.innerHTML += `
+          <tr>
+            <td>${t.date}</td>
+            <td>${t.item}</td>
+            <td>${Number(t.qty).toFixed(2)}</td>
+            <td>${t.from}</td>
+            <td>${t.to}</td>
+            <td>${isAdmin() ? `<button class="danger" onclick="deleteTransfer(${originalIndex})">Delete</button>` : ""}</td>
+          </tr>`;
+      });
+    }
+  }
+
+  const currentStockValue = currentInventory().reduce((sum,r) => sum + (totalQty(r) * Number(r.price || 0)), 0);
+  const zeroStock = currentInventory().filter(r => totalQty(r) <= 0).length;
+
+  document.getElementById("summary").innerHTML = `
+    <span class="badge">Current page: ${currentLocation} ${currentMode === "dashboard" ? "Dashboard" : currentMode === "settings" ? "Settings" : currentMode === "log" ? "Admin Log" : currentMode === "export" ? "Export Data" : currentMode === "count" ? "Stock Count" : currentMode === "waste" ? "Waste Log" : currentMode === "transfer" ? "Transfer" : "Stock"}</span>
+    <span class="badge">Items: ${currentInventory().length}</span>
+    <span class="badge">Zero/negative stock: ${zeroStock}</span>
+    <span class="badge">Stock value: ${money(currentStockValue)}</span>
+    <span class="badge">Stock count value difference: ${money(totalValueDiff)}</span>
+    <span class="badge">Invoices: ${locationInvoices.length}</span>
+  `;
+
+  save();
+}
+
+loadAIInvoiceSettings();
+render();
+showApp();
+updateBranding();
+</script>
+</div>
+</body>
+</html>
